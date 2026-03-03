@@ -34,6 +34,7 @@ import os
 import sys
 import glob
 import argparse
+import inspect
 import torch
 import h5py
 import numpy as np
@@ -45,6 +46,7 @@ from pathlib import Path
 sys.path.append('third_party/megasam-package')
 sys.path.append('third_party/megasam-package/Depth-Anything')
 sys.path.append('third_party/megasam-package/UniDepth')
+sys.path.append('moge')
 sys.path.append("third_party/megasam-package/base/droid_slam")
 sys.path.append('third_party/megasam-package/cvd_opt/core')
 sys.path.append('third_party/megasam-package/cvd_opt')
@@ -58,6 +60,7 @@ from camera_tracking_scripts.test_demo import droid_slam_optimize, return_full_r
 from preprocess_flow import prepare_img_data, process_flow
 from cvd_opt import cvd_optimize
 from run_all import demo_unidepth, demo_depthanything
+from stage1_reconstruction.moge_depth_utils import load_moge_model, infer_moge_inverse_depths
 
 def save_dict_to_hdf5(h5file, dictionary, path="/"):
     """
@@ -194,7 +197,7 @@ def process_video(
     """Process a single video directory with MegaSAM."""
     
     # Unpack models
-    model_uni, depth_anything, flow_model = models
+    model_uni, depth_backend_model, flow_model = models
     
     # Get all images
     img_path_list = sorted(glob.glob(os.path.join(input_dir, '*.jpg')))
@@ -224,6 +227,8 @@ def process_video(
     # Create output file name
     # video_name = '_'.join(input_dir.split('/')[-2:])
     video_name = input_dir.split("/")[-2]
+    if args.output_tag:
+        video_name = f"{video_name}_{args.output_tag}"
     scene_name = "megasam_reconstruction_results_" + video_name + "_cam01_frame_" + str(start_frame) + "_" + str(end_frame) + "_subsample_" + str(frame_sample_ratio) + ".h5"
     scene_name = f"megasam_reconstruction_results_{video_name}_cam01_frame_{start_frame}_{end_frame}_subsample_{frame_sample_ratio}.h5"
     save_path = os.path.join(output_dir, scene_name)
@@ -238,8 +243,17 @@ def process_video(
         # Run unidepth
         depth_list_uni, fovs = demo_unidepth(model_uni, img_path_list, args, save=args.save_intermediate)
         
-        # Run depth anything
-        depth_list_da = demo_depthanything(depth_anything, img_path_list, args, save=args.save_intermediate)
+        # Run chosen depth backend
+        if args.depth_model == "moge":
+            depth_list_da = infer_moge_inverse_depths(
+                depth_backend_model,
+                img_path_list,
+                out_dir=args.outdir,
+                save=args.save_intermediate,
+                fovs=fovs,
+            )
+        else:
+            depth_list_da = demo_depthanything(depth_backend_model, img_path_list, args, save=args.save_intermediate)
         
         # Process flow
         img_data = prepare_img_data(img_path_list)
@@ -258,6 +272,9 @@ def process_video(
         )
 
         # Run cvd optimize
+        cvd_kwargs = dict(save=False)
+        if "freeze_shift" in inspect.signature(cvd_optimize).parameters:
+            cvd_kwargs["freeze_shift"] = (args.depth_model == "moge")
         images, depths, intrinsics, cam_c2w = cvd_optimize(
             images[:, ::-1, ...],
             disps + 1e-6,
@@ -271,7 +288,7 @@ def process_video(
             scene_name,
             args.w_grad,
             args.w_normal,
-            save=False
+            **cvd_kwargs,
         )
         
         # Extract data
@@ -369,6 +386,20 @@ def main():
     parser.add_argument("--start-frame", type=int, default=0, help="Start frame index")
     parser.add_argument("--end-frame", type=int, default=-1, help="End frame index (-1 for all frames)")
     parser.add_argument("--gsam2", action="store_true", default=False)
+    parser.add_argument("--output-tag", type=str, default="", help="Optional suffix for output file naming")
+    parser.add_argument(
+        "--depth-model",
+        type=str,
+        default="moge",
+        choices=["moge", "depth_anything"],
+        help="Depth prior backend for Stage1",
+    )
+    parser.add_argument(
+        "--moge-pretrained",
+        type=str,
+        default="Ruicheng/moge-vitl",
+        help="MoGe pretrained model id/path",
+    )
 
     parser.add_argument('--start_idx', type=int, default=0, help='Start index')
     parser.add_argument('--end_idx', type=int, default=-1, help='End index')
@@ -428,38 +459,41 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model_uni = model_uni.to(device)
 
-    # Load Depth Anything model
-    print("Loading Depth Anything model...")
-    assert args.encoder in ['vits', 'vitb', 'vitl']
-    if args.encoder == 'vits':
-        depth_anything = DPT_DINOv2(
-            encoder='vits',
-            features=64,
-            out_channels=[48, 96, 192, 384],
-            localhub=args.localhub,
-        ).cuda()
-    elif args.encoder == 'vitb':
-        depth_anything = DPT_DINOv2(
-            encoder='vitb',
-            features=128,
-            out_channels=[96, 192, 384, 768],
-            localhub=args.localhub,
-        ).cuda()
+    # Load chosen depth backend once
+    if args.depth_model == "depth_anything":
+        print("Loading Depth Anything model...")
+        assert args.encoder in ['vits', 'vitb', 'vitl']
+        if args.encoder == 'vits':
+            depth_backend_model = DPT_DINOv2(
+                encoder='vits',
+                features=64,
+                out_channels=[48, 96, 192, 384],
+                localhub=args.localhub,
+            ).cuda()
+        elif args.encoder == 'vitb':
+            depth_backend_model = DPT_DINOv2(
+                encoder='vitb',
+                features=128,
+                out_channels=[96, 192, 384, 768],
+                localhub=args.localhub,
+            ).cuda()
+        else:
+            depth_backend_model = DPT_DINOv2(
+                encoder='vitl',
+                features=256,
+                out_channels=[256, 512, 1024, 1024],
+                localhub=args.localhub,
+            ).cuda()
+
+        total_params = sum(param.numel() for param in depth_backend_model.parameters())
+        print('DepthAnything parameters: {:.2f}M'.format(total_params / 1e6))
+        depth_backend_model.load_state_dict(
+            torch.load(args.load_from, map_location='cpu'), strict=True
+        )
+        depth_backend_model.eval()
     else:
-        depth_anything = DPT_DINOv2(
-            encoder='vitl',
-            features=256,
-            out_channels=[256, 512, 1024, 1024],
-            localhub=args.localhub,
-        ).cuda()
-
-    total_params = sum(param.numel() for param in depth_anything.parameters())
-    print('Total parameters: {:.2f}M'.format(total_params / 1e6))
-
-    depth_anything.load_state_dict(
-        torch.load(args.load_from, map_location='cpu'), strict=True
-    )
-    depth_anything.eval()
+        print(f"Loading MoGe model from: {args.moge_pretrained}")
+        depth_backend_model = load_moge_model(pretrained_model=args.moge_pretrained, device=device)
 
     # Load RAFT flow model
     print("Loading RAFT flow model...")
@@ -469,7 +503,7 @@ def main():
     flow_model.cuda().eval()
     
     # Pack all models into a tuple
-    models = (model_uni, depth_anything, flow_model)
+    models = (model_uni, depth_backend_model, flow_model)
     
     # Get all video folders and filter by pattern
     video_base_dir = args.video_base_dir
