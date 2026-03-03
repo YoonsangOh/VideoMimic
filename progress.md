@@ -77,3 +77,10 @@
     1) HF 접근 가능한 환경에서 자동/수동 다운로드, 또는
     2) 다른 서버에 존재하는 `model.pt`를 로컬 경로로 복사 후 `--moge-pretrained <local_path>`
   - 방식으로 충당해야 함.
+
+### Git 반영 상태
+- 로컬 커밋 생성 완료:
+  - `4a6db9f Add MoGe-based Stage1 depth backend with fallback and output tagging`
+- 원격 푸시 시도 결과:
+  - 대상: `https://github.com/YoonsangOh/VideoMimic.git` (`yoonsang` remote)
+  - 실패 원인: 실행 환경 DNS/네트워크 제한 (`Could not resolve host: github.com`)
