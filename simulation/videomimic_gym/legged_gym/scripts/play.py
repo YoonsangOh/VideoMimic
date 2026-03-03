@@ -15,7 +15,7 @@ class PlayManager:
         self.unknown = unknown
         self.env_overrides, self.train_overrides = parse_unknown_args(unknown)
         self.env_cfg, self.train_cfg = task_registry.get_cfgs(name=args.task)
-        self.env_cfg.viser.enabled = True
+        self.env_cfg.viser.enable = True  # Fix: use 'enable' not 'enabled'
         self.curr_task = args.task
 
         # Adjust environment configuration based on task
@@ -28,14 +28,22 @@ class PlayManager:
 
 
         # Set some additional config flags
+        # Note: WandB is disabled in play mode by default, but can be enabled if needed
         args.use_wandb = False
         self.train_cfg.runner.resume = True
+        
+        # Print Viser status if enabled
+        if hasattr(self.env, 'viser_viz'):
+            print(f"Viser visualization enabled. Server should be available at http://localhost:8080")
 
         # Initialize PPO runner and policy
+        print("Initializing PPO runner and policy...")
         self.ppo_runner, self.train_cfg = task_registry.make_alg_runner(
             env=self.env, name=args.task, args=args, train_cfg=self.train_cfg, train_overrides=self.train_overrides
         )
+        print("Loading policy...")
         self.policy = self.ppo_runner.get_inference_policy(device=self.env.device)
+        print("✓ Policy loaded successfully")
 
         # Simulation step counter
         self.t = 0
@@ -124,12 +132,21 @@ class PlayManager:
 
     def run(self):
         """Main simulation loop."""
+        print("=" * 60)
+        print("Starting simulation loop...")
+        print("=" * 60)
+        step_count = 0
         while True:
             self.step_simulation()
+            step_count += 1
+            if step_count % 100 == 0:
+                print(f"Simulation step {step_count}")
 
 
 if __name__ == '__main__':
     args, unknown = get_args()
 
+    print("Creating PlayManager...")
     play_manager = PlayManager(args, unknown)
+    print("PlayManager created. Starting simulation...")
     play_manager.run()

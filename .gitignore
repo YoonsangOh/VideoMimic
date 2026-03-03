@@ -1,3 +1,38 @@
 simulation/data/checkpoints
 simulation/data/unitree_lafan
 simulation/data/videomimic_captures
+
+# Editor
+.vscode/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Large / generated artifacts
+*.bundle
+
+# Generated data / outputs (project-specific)
+real2sim/demo_data/
+real2sim/depth_maps_*/
+real2sim/contact_visualizations_*/
+
+# logs
+*.log
+
+# wandb runs
+wandb/
+simulation/wandb/
+
+# videos / media
+videos/
+*.mp4
+*.mov
+
+# generated data dirs (often huge)
+simulation/videomimic_gym/data/
+
+real2sim/third_party
+real2sim/assets
+real2sim/pyroki
+EOF

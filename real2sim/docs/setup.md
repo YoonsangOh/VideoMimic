@@ -34,7 +34,13 @@ conda activate vm1rs
 Install other dependencies:
 
 ```bash
-pip install -r requirements.txt
+# First, install chumpy and smplx with --no-build-isolation 
+# (their setup.py imports pip which fails in build isolation)
+pip install --no-build-isolation git+https://github.com/hongsukchoi/chumpy
+pip install --no-build-isolation git+https://github.com/hongsukchoi/smplx
+
+# Then install the rest of the dependencies
+pip install viser tyro supervision transformers warp-lang timm einops scikit-learn boto3 requests pyliblzfse h5py yacs
 ```
 
 #### Human Detection & Pose Estimation
@@ -46,6 +52,10 @@ mkdir third_party
 cd third_party/
 git clone https://github.com/hongsukchoi/Grounded-SAM-2.git
 cd Grounded-SAM-2
+# If you don't have sudo access, install CUDA via conda:
+# conda install -c nvidia/label/cuda-12.4.0 cuda-toolkit -y
+# export CUDA_HOME=$CONDA_PREFIX
+# Otherwise, use system CUDA:
 export CUDA_HOME=/usr/local/cuda-12.4  # Adjust to your CUDA version
 pip install -e .                        # Segment Anything 2
 pip install --no-build-isolation -e grounding_dino  # Grounding DINO
@@ -146,12 +156,18 @@ pip install git+https://github.com/Junyi42/croco_package.git
 
 #### Optional: Neural Meshification (NDC)
 
+> **Note**: NDC is optional. The default meshification method is NKSR (installed in the `vm1recon` environment).
+> Skip this section if you only plan to use NKSR.
+
 ```bash
 # NDC (skip if only using NKSR)
-pip install trimesh h5py cython opencv-python
-cd third_party/NDC
-python setup.py build_ext --inplace
-cd ../..
+# Clone NDC repository first (if available)
+# cd third_party/
+# git clone <NDC_REPOSITORY_URL> NDC
+# cd NDC
+# pip install trimesh h5py cython opencv-python
+# python setup.py build_ext --inplace
+# cd ../..
 ```
 
 #### Optional: Hand Pose Estimation

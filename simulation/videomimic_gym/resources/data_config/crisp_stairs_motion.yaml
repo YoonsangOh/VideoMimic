@@ -1,0 +1,5 @@
+- default_data_fps_override: 15
+  folder_path: crisp_stairs_cam01_frame_0_375_subsample_2
+  human_video_data_pattern: retarget_poses_g1.h5
+  human_video_terrain_pattern: background_mesh.obj
+  teacher_checkpoint_run_name: 20250410_063030_g1_deepmimic

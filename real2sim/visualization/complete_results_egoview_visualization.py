@@ -48,7 +48,8 @@ from viser.extras import ViserUrdf
 
 # import root directory
 import sys
-sys.path.append(osp.dirname(osp.dirname(osp.abspath(__file__))))
+real2sim_root = osp.dirname(osp.dirname(osp.abspath(__file__)))
+sys.path.append(real2sim_root)
 
 import viser_camera_util
 from utilities.joint_names import SMPL_KEYPOINTS  
@@ -138,10 +139,12 @@ def load_megahunter_data(megahunter_path: Path, person_id: str, device: str) -> 
     human_params_in_world = megahunter_data['our_pred_humans_smplx_params']
     
     # Extract SMPL data
+    real2sim_root = osp.dirname(osp.dirname(osp.abspath(__file__)))
+    model_path = osp.join(real2sim_root, 'assets', 'body_models')
     smpl_batch_layer = smplx.create(
-        model_path='./assets/body_models', 
+        model_path=model_path, 
         model_type='smpl', 
-        gender='male',  # TODO: make configurable
+        gender='female',  # TODO: make configurable
         num_betas=10, 
         batch_size=len(human_params_in_world[person_id]['body_pose'])
     ).to(device)
@@ -237,7 +240,8 @@ def load_megahunter_data(megahunter_path: Path, person_id: str, device: str) -> 
         if contact_estimation:
             # Load SMPL vertex segmentation for contact visualization
             import json
-            smpl_vert_seg_path = "./assets/body_models/smpl/smpl_vert_segmentation.json"
+            real2sim_root = osp.dirname(osp.dirname(osp.abspath(__file__)))
+            smpl_vert_seg_path = osp.join(real2sim_root, "assets", "body_models", "smpl", "smpl_vert_segmentation.json")
             if osp.exists(smpl_vert_seg_path):
                 with open(smpl_vert_seg_path, 'r') as f:
                     smpl_vert_seg = json.load(f)

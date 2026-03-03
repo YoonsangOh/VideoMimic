@@ -43,13 +43,27 @@ class LeggedRobot(BaseTask):
         
         # Initialize viser if enabled
         if self.use_viser_viz:
-            from legged_gym.utils.viser_visualizer import LeggedRobotViser
+            try:
+                print("Starting Viser initialization...")
+                from legged_gym.utils.viser_visualizer import LeggedRobotViser
 
-            import viser
-            from viser.extras import ViserUrdf
-            from robot_descriptions.loaders.yourdfpy import load_robot_description
-            self.viser_viz = LeggedRobotViser(urdf_path=self.cfg.asset.file.format(LEGGED_GYM_ROOT_DIR=LEGGED_GYM_ROOT_DIR), dt=self.cfg.control.decimation * self.sim_params.dt)
-            self.viser_viz.init_isaacgym_robot(self)
+                import viser
+                from viser.extras import ViserUrdf
+                from robot_descriptions.loaders.yourdfpy import load_robot_description
+                
+                urdf_path = self.cfg.asset.file.format(LEGGED_GYM_ROOT_DIR=LEGGED_GYM_ROOT_DIR)
+                print(f"Creating LeggedRobotViser with URDF: {urdf_path}")
+                self.viser_viz = LeggedRobotViser(urdf_path=urdf_path, dt=self.cfg.control.decimation * self.sim_params.dt)
+                print("Initializing IsaacGym robot in Viser...")
+                self.viser_viz.init_isaacgym_robot(self)
+                print("✓ Viser visualization initialized successfully")
+            except Exception as e:
+                import traceback
+                print(f"✗ Warning: Failed to initialize Viser visualization: {e}")
+                print("Traceback:")
+                traceback.print_exc()
+                print("Continuing without Viser visualization...")
+                self.use_viser_viz = False
         
         # Initialize trajectory export variables
         self.export_trajectory = self.cfg.env.export_trajectory
@@ -903,6 +917,7 @@ class LeggedRobot(BaseTask):
 
     def _create_trimesh(self):
         """ Adds a triangle mesh terrain to the simulation and viser visualization """
+        print(f"[Terrain] Loading terrain mesh: {self.terrain.vertices.shape[0]} vertices, {self.terrain.triangles.shape[0]} triangles")
         tm_params = gymapi.TriangleMeshParams()
         tm_params.nb_vertices = self.terrain.vertices.shape[0]
         tm_params.nb_triangles = self.terrain.triangles.shape[0]
@@ -920,15 +935,33 @@ class LeggedRobot(BaseTask):
             self.terrain.triangles.flatten(order='C'),
             tm_params
         )
+        print(f"[Terrain] Terrain mesh added to Isaac Gym simulation")
 
         # Add terrain mesh to viser if enabled
         if self.use_viser_viz:
-            self.viser_viz.add_mesh(
+            print(f"[Terrain] Adding terrain mesh to Viser visualization...")
+            print(f"[Terrain]   Vertices shape: {self.terrain.vertices.shape}, dtype: {self.terrain.vertices.dtype}")
+            print(f"[Terrain]   Faces shape: {self.terrain.triangles.shape}, dtype: {self.terrain.triangles.dtype}")
+            print(f"[Terrain]   Bounds: {self.terrain.vertices.min(axis=0)} to {self.terrain.vertices.max(axis=0)}")
+            
+            # Use bright purple/magenta color for high contrast against white background
+            terrain_color = (0.8, 0.2, 0.8)  # Bright purple/magenta for maximum visibility
+            handle = self.viser_viz.add_mesh(
                 "/terrain",
                 vertices=self.terrain.vertices,
                 faces=self.terrain.triangles,
-                color=(0.282, 0.247, 0.361),
+                color=terrain_color,
             )
+            print(f"[Terrain] Terrain mesh added to Viser (visible at /terrain)")
+            print(f"[Terrain]   Mesh handle type: {type(handle)}")
+            print(f"[Terrain]   Mesh handles dict keys: {list(self.viser_viz._mesh_handles.keys())}")
+            
+            # Ensure terrain is visible initially
+            if 'terrain' in self.viser_viz._mesh_handles:
+                self.viser_viz._mesh_handles['terrain'].visible = True
+                print(f"[Terrain]   Terrain visibility set to: {self.viser_viz._mesh_handles['terrain'].visible}")
+        else:
+            print(f"[Terrain] Warning: Viser visualization is disabled, terrain will not be visible in web UI")
 
     def _create_envs(self):
         """ Creates environments:

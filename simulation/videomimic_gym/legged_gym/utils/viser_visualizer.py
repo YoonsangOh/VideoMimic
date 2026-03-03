@@ -30,12 +30,17 @@ class LeggedRobotViser:
             print(f"Found existing server on port {port}, shutting it down.")
             LeggedRobotViser.global_servers.pop(port).stop()
 
+        print(f"Initializing Viser server on port {port}...")
         self.server = viser.ViserServer(port=port)
         LeggedRobotViser.global_servers[port] = self.server
+        
+        # Print server URL after initialization
+        print(f"✓ Viser server started on http://localhost:{port}")
 
         self.dt = dt
         self.force_dt = force_dt
 
+        print("Setting up GUI controls...")
         # Add simulation control buttons
         with self.server.gui.add_folder("Simulation Control"):
             self.play_pause = self.server.gui.add_checkbox(
@@ -205,17 +210,22 @@ class LeggedRobotViser:
                     self.rewards_plot = None
 
 
+        print("Creating world frame...")
         self._isaac_world_node = self.server.scene.add_frame("/isaac_world", show_axes=False)
 
         # Load URDF for both simulators
+        print(f"Loading URDF from {urdf_path}...")
         self.urdf = yourdfpy.URDF.load(urdf_path, load_collision_meshes=True)
+        print("✓ URDF loaded successfully")
 
         # Attach URDF under both world nodes
+        print("Attaching URDF to Viser...")
         self.isaac_urdf = ViserUrdf(
             target=self.server,
             urdf_or_path=self.urdf,
             root_node_name="/isaac_world"
         )
+        print("✓ URDF attached to Viser")
 
         # Store references to frames for both URDFs
         self._isaac_joint_frames = {
@@ -521,7 +531,9 @@ class LeggedRobotViser:
 
     def init_isaacgym_robot(self, robot):
         """Setup IsaacGym robot instance"""
+        print("Setting up IsaacGym robot reference in Viser...")
         self.robot = robot
+        print("✓ IsaacGym robot setup complete")
 
     def set_viewer_camera(self, position: Union[np.ndarray, List[float]], lookat: Union[np.ndarray, List[float]]):
         """

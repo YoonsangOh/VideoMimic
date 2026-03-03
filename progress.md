@@ -68,19 +68,27 @@
   - VRAM 점유가 필요한 Stage 실행 테스트는 의도적으로 수행하지 않음
 
 ### MoGe Weights 상태
-- 네트워크 제한으로 HF 직접 다운로드 시도는 실패함.
-- `CRISP-Real2Sim/prep/MogeSAM` 경로 확인 결과:
-  - 존재: `tapip3d_final.pth`, `megasam_final.pth`, `depth_anything_vitl14.pth`, `raft-things.pth` 등
-  - 미확인: MoGe 전용 `model.pt` (예: `Ruicheng/moge-vitl`)
+- `CRISP-Real2Sim/prep/MogeSAM` 폴더 내부에는 MoGe 전용 `model.pt`가 없고, `tapip3d_final.pth`는 TAPIP3D 체크포인트임을 재확인했다.
+- CRISP의 MoGe 코드는 `MoGeModel.from_pretrained('Ruicheng/moge-vitl')`를 직접 호출하므로, 기본 동작은 HF에서 `model.pt`를 가져오거나(또는 기존 캐시를 재사용)하는 방식이다.
+- 동일 모델 ID 확인:
+  - 코드 근거: `prep/MogeSAM/third_party/megasam/MoGe/run_videos.py` 등에서 `Ruicheng/moge-vitl` 고정 사용
+- 실제 캐시 확인:
+  - `/home/nas_main/.cache/huggingface/hub/models--Ruicheng--moge-vitl/.../model.pt` 존재
+  - blob 크기 약 `1.2G`, sha256: `da96b09a0485a3c45a5aa455e67743c8b4efc4dd8437c1f2aa93c2b4303d957f`
 - 결론:
-  - 현 시점에서 MoGe weight는
-    1) HF 접근 가능한 환경에서 자동/수동 다운로드, 또는
-    2) 다른 서버에 존재하는 `model.pt`를 로컬 경로로 복사 후 `--moge-pretrained <local_path>`
-  - 방식으로 충당해야 함.
+  - "CRISP에서 이미 돌아갔다"는 사실은 `model.pt`가 프로젝트 폴더가 아닌 HF 캐시에 저장되어 있었기 때문으로 해석된다.
+  - VideoMimic 실행 시에도 `--moge-pretrained`에 로컬 `model.pt` 경로를 주면 HF 재다운로드 없이 동일 모델 사용 가능.
 
 ### Git 반영 상태
 - 로컬 커밋 생성 완료:
   - `4a6db9f Add MoGe-based Stage1 depth backend with fallback and output tagging`
-- 원격 푸시 시도 결과:
-  - 대상: `https://github.com/YoonsangOh/VideoMimic.git` (`yoonsang` remote)
-  - 실패 원인: 실행 환경 DNS/네트워크 제한 (`Could not resolve host: github.com`)
+  - `3d64d54 Update progress log with MoGe integration and push attempt status`
+- 원격 반영:
+  - 사용자 수동 작업으로 `moge` 브랜치를 GitHub 원격에 푸시 완료됨.
+- 참고:
+  - 본 실행 환경에서의 직접 푸시는 DNS 제한으로 실패했으나, 최종 원격 반영은 사용자 수동 푸시로 해결됨.
+
+### 정리 작업
+- 중복 복사본 삭제 완료:
+  - 삭제: `real2sim/third_party/megasam-package/MoGe`
+  - 유지: `real2sim/moge` (VideoMimic Stage1 통합 경로)

@@ -1,10 +1,12 @@
+# Install these FIRST with --no-build-isolation (their setup.py imports pip):
+#   pip install --no-build-isolation git+https://github.com/hongsukchoi/chumpy
+#   pip install --no-build-isolation git+https://github.com/hongsukchoi/smplx
+
 viser
 tyro
 supervision
 transformers
 warp-lang
-git+https://github.com/hongsukchoi/chumpy
-git+https://github.com/hongsukchoi/smplx
 timm
 einops
 scikit-learn 
