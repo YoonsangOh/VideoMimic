@@ -1,5 +1,13 @@
 # VideoMimic Progress Log
 
+## 2026-03-05
+
+### vm1recon 설치 이슈 정리 문서화 (2026.03.05)
+- `vm1recon` 재설치 과정에서 발생한 주요 셋업 문제(컴파일러/CUDA 혼재/xformers 손상/nksr 인덱스 및 동적 라이브러리/chumpy-smplx build isolation/python-pycg[full] 의존성)를 모두 해결했다.
+- 해결 내역과 재현 가능한 처리 절차를 별도 문서로 작성했다:
+  - `real2sim/docs/vm1recon_setup_troubleshooting_2026-03-05.md`
+- 최종적으로 Stage 1/3 진입 검증(`--help`) 및 핵심 모듈(`droid_backends`, `lietorch_backends`, `nksr.Reconstructor`) import 확인까지 완료했다.
+
 ## 2026-03-04
 
 ### Real2Sim Understanding (Current)
