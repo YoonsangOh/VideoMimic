@@ -79,7 +79,7 @@ bash download_videomimic_data.sh
 
 ### 4.2 기본 Teacher 체크포인트
 
-기본적으로 `20250410_063030_g1_deepmimic` 체크포인트를 사용합니다. 
+기본적으로 `20250410_063030_g1_deepmimic` 체크포인트를 사용합니다.
 이 체크포인트가 없다면 Stage 1을 먼저 실행해야 합니다.
 
 ## 5. 학습 실행
@@ -219,4 +219,3 @@ python 1080_balls_of_solitude.py
 1. 학습된 체크포인트 확인
 2. Viser로 재생하여 결과 확인
 3. 필요시 Stage 3 (Distillation) 또는 Stage 4 (RL Finetuning) 진행
-

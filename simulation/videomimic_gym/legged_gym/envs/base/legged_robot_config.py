@@ -12,7 +12,7 @@ class SensorCfg:
     enabled = True
     name = ""  # Custom name - if empty, will use default name based on type
     max_delay = 0
-    
+
 @configclass
 class DepthCameraCfg(SensorCfg):
     """Configuration for depth camera sensors"""
@@ -57,10 +57,10 @@ class MultiLinkHeightCfg(SensorCfg):
 @configclass
 class LeggedRobotSensorsCfg:
     """Configuration for robot sensors.
-    
+
     Use this class to define what sensors your robot will use.
     You can add multiple sensors of the same type with different configurations.
-    
+
     Example:
         ```python
         @configclass
@@ -73,7 +73,7 @@ class LeggedRobotSensorsCfg:
                     HeightfieldCfg(name="terrain_height", body_name="pelvis"),
                 ]
             )
-            
+
             # Include sensor observations
             env = LeggedRobotEnvCfg(
                 obs = ['torso', 'front_camera', 'rear_camera', 'terrain_height'],
@@ -88,10 +88,11 @@ class LeggedRobotSensorsCfg:
 class LeggedRobotEnvCfg:
     num_envs: int = 4096
     num_actions: int = 12
-    env_spacing: float = 3.  # not used with heightfields/trimeshes 
+    env_spacing: float = 3.  # not used with heightfields/trimeshes
     send_timeouts: bool = True # not used with heightfields/trimeshes
     episode_length_s: float = 20  # episode length in seconds
     test: bool = False
+    offscreen_rendering: bool = False  # Keep graphics context when headless for camera capture.
     obs = ['torso']
     obs_history = {}
     export_trajectory: bool = False  # Whether to export trajectory data during play
@@ -142,7 +143,7 @@ class LeggedRobotInitStateCfg:
     lin_vel = [0.0, 0.0, 0.0]  # x,y,z [m/s]
     ang_vel = [0.0, 0.0, 0.0]  # x,y,z [rad/s]
     default_joint_angles = { # target angles when action = 0.0
-        "joint_a": 0., 
+        "joint_a": 0.,
         "joint_b": 0.}
 
 @configclass
@@ -174,7 +175,7 @@ class LeggedRobotAssetCfg:
     self_collisions = 0 # 1 to disable, 0 to enable...bitwise filter
     replace_cylinder_with_capsule = True # replace collision cylinders with capsules, leads to faster/more stable simulation
     flip_visual_attachments = True # Some .obj meshes must be flipped from y-up to z-up
-    
+
     density = 0.001
     angular_damping = 0.
     linear_damping = 0.
@@ -238,13 +239,13 @@ class LeggedRobotRewardsCfg:
         torques = -0.00001
         dof_vel = -0.
         dof_acc = -2.5e-7
-        base_height = -0. 
+        base_height = -0.
         feet_air_time =  1.0
         collision = -1.
-        feet_stumble = -0.0 
+        feet_stumble = -0.0
         action_rate = -0.01
         stand_still = -0.
-    
+
     scales = Scales()
 
     only_positive_rewards = True # if true negative total rewards are clipped at zero (avoids early termination problems)
@@ -254,6 +255,8 @@ class LeggedRobotRewardsCfg:
     soft_torque_limit = 1.
     base_height_target = 1.
     max_contact_force = 100. # forces above this value are penalized
+    disable_contact_related_rewards = False
+    contact_related_reward_names = []
 
 @configclass
 class LeggedRobotNormalizationCfg:
@@ -349,15 +352,18 @@ class LeggedRobotPolicyCfg:
     critic_hidden_dims = [512, 256, 128]
     activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
     re_init_std = False
+    disable_actor_terrain_input = False
+    disable_critic_terrain_input = False
+    terrain_input_obs_names = ['terrain_height', 'terrain_height_noisy', 'root_height', 'link_heights']
 
     @configclass
     class ObsProcActor:
         torso = { 'type': 'identity' }
-    
+
     @configclass
     class ObsProcCritic:
         torso = { 'type': 'identity' }
-    
+
     obs_proc_actor = ObsProcActor()
     obs_proc_critic = ObsProcCritic()
 

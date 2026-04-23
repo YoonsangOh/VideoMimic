@@ -171,16 +171,16 @@ class G1DeepMimicRewardScalesCfg:
     ang_vel_xy = 0.00
     orientation = 0.0
     base_height = 0.0
-    
+
     # regularisation terms
-    dof_acc = 0.0 #-1e-6 / 3.0 
-    dof_vel = 0.0 # -5e-4 / 3.0 
-    torques = 0.0 
+    dof_acc = 0.0 #-1e-6 / 3.0
+    dof_vel = 0.0 # -5e-4 / 3.0
+    torques = 0.0
     energy = 0.0 #-0.000005
     action_rate = -0.2
     action_accel = 0.0 # -0.01
 
-    ankle_action = 0.0 
+    ankle_action = 0.0
 
     no_fly = 0.0#-50.0
 
@@ -210,14 +210,14 @@ class G1DeepMimicRewardScalesCfg:
     joint_vel_tracking = 24.0
 
 
-    feet_contact_matching = 1.0 
-    contact_smoothness = 0.0 
+    feet_contact_matching = 1.0
+    contact_smoothness = 0.0
 
     feet_max_height_for_this_air = 0.0
 
     termination= -500.0
     # termination= -0.0
-    
+
     feet_air_time = 2000.0
 
 
@@ -226,7 +226,7 @@ class G1DeepMimicRewardsCfg(LeggedRobotRewardsCfg):
     # soft_dof_pos_limit = 1.0
     soft_dof_pos_limit = 0.98
     base_height_target = 0.78
-   
+
     scales = G1DeepMimicRewardScalesCfg()
 
     joint_pos_tracking_k = 2.0
@@ -244,6 +244,19 @@ class G1DeepMimicRewardsCfg(LeggedRobotRewardsCfg):
     root_ang_vel_tracking_k = 0.01
 
     only_positive_rewards = False
+    contact_related_reward_names = [
+        "contact",
+        "contact_no_vel",
+        "collision",
+        "feet_air_time",
+        "feet_contact_matching",
+        "contact_smoothness",
+        "no_fly",
+        "feet_swing_height",
+        "feet_max_height_for_this_air",
+        "feet_stumble",
+        "feet_contact_forces",
+    ]
 
 
 @configclass
@@ -303,7 +316,7 @@ class G1DeepMimicNoiseCfg(LeggedRobotNoiseCfg):
 
         freeze_env_prob = 0.0
         unfreeze_env_prob = 0.0
-    
+
     playback_noise_scales = PlayBackNoiseScales()
 
 @configclass
@@ -485,7 +498,7 @@ sensor_cfgs = [
         max_distance=5.0,
         use_float=True,  # Use float32 instead of uint8
     ),
-    
+
     # Multi-link height sensor for all tracked bodies
     MultiLinkHeightCfg(
         name="link_heights",
@@ -540,12 +553,12 @@ low_stiffness_cfg = {
                      },  # [N*m/rad]
 }
 
-    
+
 @configclass
 class G1DeepMimicCfg(LeggedRobotCfg):
 
     asset = G129Anneal23DofAsset()
-  
+
     terrain = LeggedRobotDeepMimicTerrainCfg()
 
     # Example sensor configuration using the new format
@@ -556,18 +569,18 @@ class G1DeepMimicCfg(LeggedRobotCfg):
     init_state = LeggedRobotInitStateCfg(
         pos = [0.0, 0.0, 0.78], # x,y,z [m]
         default_joint_angles = {  # = target angles [rad] when action = 0.0
-           'left_hip_yaw_joint' : 0. ,   
-           'left_hip_roll_joint' : 0,               
-           'left_hip_pitch_joint' : -0.1,         
-           'left_knee_joint' : 0.3,       
-           'left_ankle_pitch_joint' : -0.2,     
-           'left_ankle_roll_joint' : 0,     
-           'right_hip_yaw_joint' : 0., 
-           'right_hip_roll_joint' : 0, 
-           'right_hip_pitch_joint' : -0.1,                                       
-           'right_knee_joint' : 0.3,                                             
-           'right_ankle_pitch_joint': -0.2,                              
-           'right_ankle_roll_joint' : 0,       
+           'left_hip_yaw_joint' : 0. ,
+           'left_hip_roll_joint' : 0,
+           'left_hip_pitch_joint' : -0.1,
+           'left_knee_joint' : 0.3,
+           'left_ankle_pitch_joint' : -0.2,
+           'left_ankle_roll_joint' : 0,
+           'right_hip_yaw_joint' : 0.,
+           'right_hip_roll_joint' : 0,
+           'right_hip_pitch_joint' : -0.1,
+           'right_knee_joint' : 0.3,
+           'right_ankle_pitch_joint': -0.2,
+           'right_ankle_roll_joint' : 0,
            'torso_joint' : 0.,
            'waist_yaw_joint' : 0.,
            'waist_pitch_joint' : 0.,
@@ -618,7 +631,7 @@ class G1DeepMimicCfg(LeggedRobotCfg):
     normalization = G1DeepMimicNormalizationCfg()
     noise = G1DeepMimicNoiseCfg()
 
-    
+
     domain_rand = LeggedRobotDomainRandCfg(
         randomize_friction = True,
         friction_range = [0.1, 1.25],
@@ -640,7 +653,7 @@ class G1DeepMimicCfg(LeggedRobotCfg):
     )
 
     control = LeggedRobotControlCfg(
-   
+
         beta = 1.0,
         action_scale = 0.25,
         decimation = 4,
@@ -733,12 +746,12 @@ class G1DeepMimicPolicyCfg(LeggedRobotPolicyCfg):
         # terrain_height = { 'type': 'flatten' }
         # terrain_height = { 'type': 'flatten_then_embed' , 'output_dim': 918}
         # terrain_height = { 'type': 'flatten_then_embed_with_attention' , 'output_dim': 918}
-        
+
         # # Include sensor observations with the new names
         # front_camera = { 'type': 'flatten' }  # Flatten the front camera depth image
         # down_camera = { 'type': 'flatten' }   # Flatten the downward camera depth image
         # terrain_height = { 'type': 'downsample', 'factor': 2 }  # Downsample the heightfield
-    
+
     @configclass
     class ObsProcCritic:
         torso = { 'type': 'identity' }
@@ -762,7 +775,7 @@ class G1DeepMimicPolicyCfg(LeggedRobotPolicyCfg):
 
         # terrain_height = { 'type': 'flatten_then_embed' , 'output_dim': 918}
         # terrain_height = { 'type': 'flatten_then_embed_with_attention' , 'output_dim': 918}
-        
+
         # # Include sensor observations for critic too
         # front_camera = { 'type': 'flatten' }
         # down_camera = { 'type': 'flatten' }
@@ -795,12 +808,12 @@ class G1DeepmimicHeightFieldPolicyCfg(G1DeepMimicPolicyCfg):
         # terrain_height = { 'type': 'flatten_then_embed' , 'output_dim': 918}
         terrain_height = { 'type': 'flatten_then_embed_with_attention' , 'output_dim': 415}
         # terrain_height = { 'type': 'flatten_then_embed_with_attention_to_hidden' }
-        
+
         # # Include sensor observations with the new names
         # front_camera = { 'type': 'flatten' }  # Flatten the front camera depth image
         # down_camera = { 'type': 'flatten' }   # Flatten the downward camera depth image
         # terrain_height = { 'type': 'downsample', 'factor': 2 }  # Downsample the heightfield
-    
+
     @configclass
     class ObsProcCritic:
         torso = { 'type': 'identity' }
@@ -827,7 +840,7 @@ class G1DeepmimicHeightFieldPolicyCfg(G1DeepMimicPolicyCfg):
 
         # terrain_height = { 'type': 'flatten_then_embed' , 'output_dim': 918}
         # terrain_height = { 'type': 'flatten_then_embed_with_attention' , 'output_dim': 918}
-        
+
         # # Include sensor observations for critic too
         # front_camera = { 'type': 'flatten' }
         # down_camera = { 'type': 'flatten' }
@@ -892,13 +905,13 @@ class G1DeepMimicCfgProjHeightfieldPolicyCfg(G1DeepMimicPolicyCfg):
 
         # terrain_height = { 'type': 'flatten_then_embed' , 'output_dim': 918}
         # terrain_height = { 'type': 'flatten_then_embed_with_attention' , 'output_dim': 918}
-        
+
         # # Include sensor observations for critic too
         # front_camera = { 'type': 'flatten' }
         # down_camera = { 'type': 'flatten' }
         # terrain_height = { 'type': 'downsample', 'factor': 2 }
 
-    
+
     obs_proc_actor = ObsProcActor()
     obs_proc_critic = ObsProcCritic()
 
@@ -958,13 +971,13 @@ class G1DeepMimicCfgRootHeightfieldPolicyCfg(G1DeepMimicPolicyCfg):
 
         # terrain_height = { 'type': 'flatten_then_embed' , 'output_dim': 918}
         # terrain_height = { 'type': 'flatten_then_embed_with_attention' , 'output_dim': 918}
-        
+
         # # Include sensor observations for critic too
         # front_camera = { 'type': 'flatten' }
         # down_camera = { 'type': 'flatten' }
         # terrain_height = { 'type': 'downsample', 'factor': 2 }
 
-    
+
     obs_proc_actor = ObsProcActor()
     obs_proc_critic = ObsProcCritic()
 
@@ -1027,13 +1040,13 @@ class G1DeepMimicCfgRootHeightfieldNoHistoryPolicyCfg(G1DeepMimicPolicyCfg):
 
         # terrain_height = { 'type': 'flatten_then_embed' , 'output_dim': 918}
         # terrain_height = { 'type': 'flatten_then_embed_with_attention' , 'output_dim': 918}
-        
+
         # # Include sensor observations for critic too
         # front_camera = { 'type': 'flatten' }
         # down_camera = { 'type': 'flatten' }
         # terrain_height = { 'type': 'downsample', 'factor': 2 }
 
-    
+
     obs_proc_actor = ObsProcActor()
     obs_proc_critic = ObsProcCritic()
 
@@ -1099,13 +1112,13 @@ class G1DeepMimicCfgRootPolicyCfg(G1DeepMimicPolicyCfg):
 
         # terrain_height = { 'type': 'flatten_then_embed' , 'output_dim': 918}
         # terrain_height = { 'type': 'flatten_then_embed_with_attention' , 'output_dim': 918}
-        
+
         # # Include sensor observations for critic too
         # front_camera = { 'type': 'flatten' }
         # down_camera = { 'type': 'flatten' }
         # terrain_height = { 'type': 'downsample', 'factor': 2 }
 
-    
+
     obs_proc_actor = ObsProcActor()
     obs_proc_critic = ObsProcCritic()
 
@@ -1171,13 +1184,13 @@ class G1DeepMimicCfgRootHeightfieldNoHistoryWithProjJointsPolicyCfg(G1DeepMimicP
 
         # terrain_height = { 'type': 'flatten_then_embed' , 'output_dim': 918}
         # terrain_height = { 'type': 'flatten_then_embed_with_attention' , 'output_dim': 918}
-        
+
         # # Include sensor observations for critic too
         # front_camera = { 'type': 'flatten' }
         # down_camera = { 'type': 'flatten' }
         # terrain_height = { 'type': 'downsample', 'factor': 2 }
 
-    
+
     obs_proc_actor = ObsProcActor()
     obs_proc_critic = ObsProcCritic()
 

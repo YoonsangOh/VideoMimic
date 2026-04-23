@@ -18,7 +18,7 @@
 ### 1. Termination Contact 충돌
 - **조건**: 특정 body part가 terrain이나 다른 객체와 충돌할 때
 - **코드**: `torch.any(torch.norm(self.contact_forces[:, self.termination_contact_indices, :], dim=-1) > 1., dim=1)`
-- **설명**: 
+- **설명**:
   - `termination_contact_indices`에 지정된 body part들에서 접촉력(contact force)의 크기가 1.0 N을 초과하면 terminate
   - 기본적으로 `terminate_after_contacts_on` 설정이 비어있으면 이 조건은 작동하지 않음
   - 주로 머리, 팔꿈치 등이 바닥에 닿았을 때를 감지
@@ -131,7 +131,7 @@ G1 로봇용 DeepMimic 환경입니다. (`g1_deepmimic.py`의 `check_termination
 ### 1. 조기 종료 (가장 흔함)
 - **원인**: `link_pos_error_threshold` 초과
 - **증상**: 로봇이 target motion을 따라가지 못함
-- **해결**: 
+- **해결**:
   - `link_pos_error_threshold` 값을 증가시킴 (play 모드)
   - 정책을 더 학습시킴 (학습 모드)
 
@@ -178,4 +178,3 @@ G1 로봇용 DeepMimic 환경입니다. (`g1_deepmimic.py`의 `check_termination
 4. **Termination 조건은 OR 연산으로 결합됨**
    - 하나의 조건만 만족해도 terminate
    - 가장 먼저 만족하는 조건이 적용됨
-

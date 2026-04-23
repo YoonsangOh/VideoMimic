@@ -1,6 +1,6 @@
 # Stage0 Result Transfer Guide (H200 -> RTX3090)
 
-작성일: 2026-03-07  
+작성일: 2026-03-07
 기준 로그: `/home/nas5/kyungminlee/VideoMimic/real2sim/stage0_yoon_videos_20260307_070201.log`
 
 ## 1) Stage0 처리 완료 비디오
@@ -93,4 +93,3 @@ for v in pg_b1 pg_f1 pg_f2 platform_b1 platform_b2 platform_f1 platform_f2 stair
   echo "$v images=$i masks=$m"
 done
 ```
-

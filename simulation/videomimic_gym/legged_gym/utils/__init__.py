@@ -7,3 +7,4 @@ from .string import *
 from .dict import *
 from .array import *
 from .configclass import *
+from rsl_rl.utils.jit import export_policy_as_jit

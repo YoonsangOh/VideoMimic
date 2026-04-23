@@ -4,6 +4,11 @@
 
 See [setup guide](setup.md) for how to install `videomimic_gym` and `videomimic_rl`.
 
+Additional project notes:
+
+- [Domain randomization guide (Korean)](domain_randomization_ko.md)
+- [Scene/Motion 좌표계와 시뮬레이터 차이 정리 (Korean)](scene_mesh_grounding_and_simulator_differences_ko.md)
+
 ### Download data
 
 We can download the checkpoints and the video datasets with
@@ -30,19 +35,19 @@ bash videomimic_gym/legged_gym/scripts/play_terrain_policy.sh
 
 *For distilled flat policy (for comparison) -- takes root direction but not the reference.*
 
-```bash 
+```bash
 bash videomimic_gym/legged_gym/scripts/play_flat_policy.sh
 ```
 
 
-*MCPT (phase 1) policy inference -- takes reference joints and root direction.* 
+*MCPT (phase 1) policy inference -- takes reference joints and root direction.*
 ```bash
 bash videomimic_gym/legged_gym/scripts/play_mcpt_policy.sh
 ```
 
 Note that all of the above checkpoints have been tested on a real unitree G1.
 
-### Running training 
+### Running training
 
 Again, ensure you have the videomimic conda environment activated for all the below.
 
@@ -79,4 +84,4 @@ Adjust nproc-per-node to be however many GPUs you have available. We also native
 
 Note that not all the above stages have been tested end2end pre-release. Results may also vary depending on the data. Please let me (Arthur) know about any specific issues you run into, happy to help.
 
-There is more details on changing parameters of train scripts in [the corresponding readme for videomimic_gym](videomimic_gym/README.md).
+There is more details on changing parameters of train scripts in [the corresponding readme for videomimic_gym](../videomimic_gym/README.md).

@@ -40,7 +40,7 @@ class LeggedRobot(BaseTask):
         self.debug_viz = False
         self.init_done = False
         self.use_viser_viz = hasattr(self.cfg, 'viser') and self.cfg.viser.enable  # Flag to enable/disable viser visualization
-        
+
         # Initialize viser if enabled
         if self.use_viser_viz:
             try:
@@ -50,7 +50,7 @@ class LeggedRobot(BaseTask):
                 import viser
                 from viser.extras import ViserUrdf
                 from robot_descriptions.loaders.yourdfpy import load_robot_description
-                
+
                 urdf_path = self.cfg.asset.file.format(LEGGED_GYM_ROOT_DIR=LEGGED_GYM_ROOT_DIR)
                 print(f"Creating LeggedRobotViser with URDF: {urdf_path}")
                 self.viser_viz = LeggedRobotViser(urdf_path=urdf_path, dt=self.cfg.control.decimation * self.sim_params.dt)
@@ -64,14 +64,14 @@ class LeggedRobot(BaseTask):
                 traceback.print_exc()
                 print("Continuing without Viser visualization...")
                 self.use_viser_viz = False
-        
+
         # Initialize trajectory export variables
         self.export_trajectory = self.cfg.env.export_trajectory
         if self.export_trajectory:
             import os
             self.export_dir = self.cfg.env.export_dir
             os.makedirs(self.export_dir, exist_ok=True)
-            
+
             # Initialize trajectory data for each environment
             self.trajectory_data = [{
                 'joint_names': [],
@@ -83,19 +83,19 @@ class LeggedRobot(BaseTask):
                 'link_quat': [],
                 'contacts': {},
                 'trajectory_name': None,  # Will be set for deepmimic environments
-                'joint_targets': [], 
+                'joint_targets': [],
                 'obs': {}
             } for _ in range(self.cfg.env.num_envs)]
-            
+
             # Track which environments have completed their first episode
             self.env_episode_done = torch.zeros(self.cfg.env.num_envs, dtype=torch.bool, device=sim_device)
             self.num_envs_completed = 0
 
             self.stepped_before_export = False
-        
+
         # Validate sensor configuration vs requested observations
         self._validate_sensor_observations()
-            
+
         self._parse_cfg(self.cfg)
         super().__init__(self.cfg, sim_params, physics_engine, sim_device, headless)
 
@@ -157,11 +157,11 @@ class LeggedRobot(BaseTask):
                 sim_time = self.gym.get_sim_time(self.sim)
                 if sim_time-elapsed_time>0:
                     time.sleep(sim_time-elapsed_time)
-            
+
             if self.device == 'cpu':
                 self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
-            
+
         self.post_physics_step()
 
         # return clipped obs, clipped states (None), rewards, dones and infos
@@ -171,7 +171,7 @@ class LeggedRobot(BaseTask):
             # Only clip if the tensor's dtype is floating-point
             if self.obs_dict[key].is_floating_point():
                 self.obs_dict[key] = torch.clip(self.obs_dict[key], -clip_obs, clip_obs)
-        
+
         if self.use_dict_obs:
             return self.obs_dict, self.rew_buf, self.reset_buf, self.extras
         else:
@@ -180,7 +180,7 @@ class LeggedRobot(BaseTask):
 
     def post_physics_step(self):
         """ check terminations, compute observations and rewards
-            calls self._post_physics_step_callback() for common computations 
+            calls self._post_physics_step_callback() for common computations
             calls self._draw_debug_vis() if needed
         """
         self.gym.refresh_actor_root_state_tensor(self.sim)
@@ -209,7 +209,7 @@ class LeggedRobot(BaseTask):
         self.compute_reward()
         env_ids = self.reset_buf.nonzero(as_tuple=False).flatten()
         self.reset_idx(env_ids)
-        
+
         if self.cfg.domain_rand.push_robots or (self.use_viser_viz and self.viser_viz.enable_push_robots):
             self._push_robots()
 
@@ -254,7 +254,7 @@ class LeggedRobot(BaseTask):
         """
         if len(env_ids) == 0:
             return
-        
+
         # reset robot states
         self._reset_dofs(env_ids)
         self._reset_root_states(env_ids)
@@ -281,13 +281,13 @@ class LeggedRobot(BaseTask):
         # send timeout info to the algorithm
         if self.cfg.env.send_timeouts:
             self.extras["time_outs"] = self.time_out_buf
-    
+
         if self.history_handler is not None:
             self.history_handler.reset(env_ids)
-        
+
         for sensor_name, sensor in self.sensors.items():
             sensor.reset(env_ids)
-    
+
     def compute_reward(self):
         """ Compute rewards
             Calls each reward function which had a non-zero scale (processed in self._prepare_reward_function())
@@ -300,7 +300,7 @@ class LeggedRobot(BaseTask):
             self.rew_buf += rew
             self.episode_sums[name] += rew
             self.current_reward_value[name] = rew
-        
+
         label = "total_pre_clip" if self.cfg.rewards.only_positive_rewards else "total"
         self.current_reward_value[label] = self.rew_buf.clone()
 
@@ -314,7 +314,7 @@ class LeggedRobot(BaseTask):
             self.rew_buf += rew
             self.episode_sums["termination"] += rew
             self.current_reward_value["termination"] = rew
-    
+
     def compute_observations(self):
         """ Computes observations
         """
@@ -338,7 +338,7 @@ class LeggedRobot(BaseTask):
 
         self.obs_dict['teacher'] = self._manual_obs_teacher()
         return self.obs_dict
-    
+
     def _obs_torso(self):
         return torch.cat((#  self.base_lin_vel * self.obs_scales.lin_vel,
                      self.base_ang_vel  * self.obs_scales.ang_vel,
@@ -348,25 +348,25 @@ class LeggedRobot(BaseTask):
                      self.dof_vel * self.obs_scales.dof_vel,
                      self.actions
                      ),dim=-1)
-    
+
     def _obs_sensor(self, sensor_name):
         """Generic observation method for any sensor
-        
+
         Args:
             sensor_name (str): Name of the sensor
-            
+
         Returns:
             Normalized sensor data as a tensor
         """
         if sensor_name not in self.sensors:
             raise ValueError(f"Sensor '{sensor_name}' not initialized but observation requested")
-        
+
         sensor = self.sensors[sensor_name]
-        
+
         # For uint8 depth maps (camera and legacy heightfields), normalize to 0-1
         if sensor.depth_map.dtype == torch.uint8:
             return sensor.depth_map.float() / 255.0
-        
+
         # For float tensors, return directly
         return sensor.depth_map
 
@@ -381,13 +381,13 @@ class LeggedRobot(BaseTask):
         else:
             self._create_ground_plane()
 
-        
+
         # Initialize sensor variables
         self.sensors = {}
-        
+
         # Create and initialize sensors based on config
         self._init_sensors()
-        
+
         self._create_envs()
 
     def set_viewer_camera(self, position, lookat):
@@ -421,8 +421,8 @@ class LeggedRobot(BaseTask):
 
             for s in range(len(props)):
                 props[s].friction = self.friction_coeffs[env_id]
-            
-        
+
+
         if hasattr(self.cfg.asset, 'dont_collide_groups'):
             dont_collide_groups = self.cfg.asset.dont_collide_groups
 
@@ -453,7 +453,7 @@ class LeggedRobot(BaseTask):
             # set all dofs together -- separately is worse
             max_value = self.cfg.domain_rand.max_dof_friction
             # bucketing cuz isaac gym needs it
-            value = np.random.uniform(0.0, max_value) 
+            value = np.random.uniform(0.0, max_value)
             value = (round((value / max_value) * self.cfg.domain_rand.dof_friction_buckets) / self.cfg.domain_rand.dof_friction_buckets) * max_value
             # props['friction'][:] = np.random.uniform(0.0, 0.1)
             props['friction'][:] = value
@@ -484,9 +484,9 @@ class LeggedRobot(BaseTask):
         # if self.cfg.domain_rand.randomize_base_mass:
         #     rng = self.cfg.domain_rand.added_mass_range
         #     props[0].mass += np.random.uniform(rng[0], rng[1])
-        
+
                 # No need to use tensors as only called upon env creation
-            
+
         self.torso_index = self.body_names.index('torso_link')
         # import pdb; pdb.set_trace()
         if self.cfg.domain_rand.randomize_base_mass:
@@ -508,19 +508,19 @@ class LeggedRobot(BaseTask):
         return props, mass_params
 
         return props
-    
+
     def _post_physics_step_callback(self):
         """ Callback called before computing terminations, rewards, and observations
             Default behaviour: Compute ang vel command based on target and heading, compute measured terrain heights and randomly push robots
         """
-        # 
+        #
         env_ids = (self.episode_length_buf % int(self.cfg.commands.resampling_time / self.dt)==0).nonzero(as_tuple=False).flatten()
         self._resample_commands(env_ids)
         if self.cfg.commands.heading_command:
             forward = quat_apply(self.base_quat, self.forward_vec)
             heading = torch.atan2(forward[:, 1], forward[:, 0])
             self.commands[:, 2] = torch.clip(0.5*wrap_to_pi(self.commands[:, 3] - heading), -1., 1.)
-        
+
         if hasattr(self, 'viser_viz') and self.viser_viz.manual_control.value:
             self.commands[:, :3] = 0.
             if self.viser_viz.move_forward.value:
@@ -553,7 +553,7 @@ class LeggedRobot(BaseTask):
         # set small commands to zero
         self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.2).unsqueeze(1)
 
-    
+
     def _init_randomisation_buffers(self):
         """Initialize buffers for episodic randomisations
         """
@@ -574,9 +574,9 @@ class LeggedRobot(BaseTask):
                                     {'controls': (self.num_dof,)},
                                     self.device
             )
-            self.control_delay_idx = torch.randint(self.cfg.domain_rand.control_delay_min, 
+            self.control_delay_idx = torch.randint(self.cfg.domain_rand.control_delay_min,
                                                 self.cfg.domain_rand.control_delay_max+1, (self.num_envs,), device=self.device, requires_grad=False)
-        
+
         if self.cfg.domain_rand.action_delays:
             self.action_queue = HistoryHandler(self.num_envs,
                                     {'actions': self.cfg.domain_rand.action_delay_max+1},
@@ -594,12 +594,12 @@ class LeggedRobot(BaseTask):
         self.actions_offset_seed[env_ids] = torch.randn_like(self.dof_pos[env_ids])
 
         if self.cfg.domain_rand.control_delays:
-            self.control_delay_idx[env_ids] = torch.randint(self.cfg.domain_rand.control_delay_min, 
+            self.control_delay_idx[env_ids] = torch.randint(self.cfg.domain_rand.control_delay_min,
                                                     self.cfg.domain_rand.control_delay_max+1, (len(env_ids),), device=self.device, requires_grad=False)
             self.control_queue.reset(env_ids)
 
         if self.cfg.domain_rand.action_delays:
-            self.action_delay_idx[env_ids] = torch.randint(self.cfg.domain_rand.action_delay_min, 
+            self.action_delay_idx[env_ids] = torch.randint(self.cfg.domain_rand.action_delay_min,
                                                     self.cfg.domain_rand.action_delay_max+1, (len(env_ids),), device=self.device, requires_grad=False)
             self.action_queue.reset(env_ids)
 
@@ -655,7 +655,7 @@ class LeggedRobot(BaseTask):
         #     final_torques = self.control_queue.query_at_history(self.control_delay_idx, 'controls')
 
         return final_torques
-    
+
     def _compute_dof_pos_targets(self, actions):
         """Compute joint position targets from actions"""
         actions_scaled = actions * self.cfg.control.action_scale
@@ -708,7 +708,7 @@ class LeggedRobot(BaseTask):
                                                      gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
 
     def _push_robots(self):
-        """ Random pushes the robots. Emulates an impulse by setting a randomized base velocity. 
+        """ Random pushes the robots. Emulates an impulse by setting a randomized base velocity.
         """
         # Check if pushing is enabled in viser (if viser is being used)
         if self.use_viser_viz and not self.viser_viz.enable_push_robots.value:
@@ -730,14 +730,14 @@ class LeggedRobot(BaseTask):
         self.root_states[:, 7:9] = torch_rand_float(-max_vel_xy, max_vel_xy, (self.num_envs, 2), device=self.device)  # lin vel x/y
         # Apply random pushes in Z direction
         self.root_states[:, 9:10] = torch_rand_float(-max_vel_z, max_vel_z, (self.num_envs, 1), device=self.device)  # lin vel z
-        
+
         env_ids_int32 = push_env_ids.to(dtype=torch.int32)
         self.gym.set_actor_root_state_tensor_indexed(self.sim,
                                                     gymtorch.unwrap_tensor(self.root_states),
                                                     gymtorch.unwrap_tensor(env_ids_int32), len(env_ids_int32))
 
-   
-    
+
+
     def update_command_curriculum(self, env_ids):
         """ Implements a curriculum of increasing commands
 
@@ -829,7 +829,7 @@ class LeggedRobot(BaseTask):
         self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
         self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)
         self._init_randomisation_buffers()
-      
+
 
         # joint positions offsets and PD gains
         self.default_dof_pos = torch.zeros(self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
@@ -854,11 +854,20 @@ class LeggedRobot(BaseTask):
         """ Prepares a list of reward functions, whcih will be called to compute the total reward.
             Looks for self._reward_<REWARD_NAME>, where <REWARD_NAME> are names of all non zero reward scales in the cfg.
         """
+        if getattr(self.cfg.rewards, "disable_contact_related_rewards", False):
+            disabled_reward_names = []
+            for reward_name in getattr(self.cfg.rewards, "contact_related_reward_names", []):
+                if reward_name in self.reward_scales and self.reward_scales[reward_name] != 0:
+                    self.reward_scales[reward_name] = 0.0
+                    disabled_reward_names.append(reward_name)
+            if disabled_reward_names:
+                print(f"[Rewards] Disabled contact-related rewards: {', '.join(disabled_reward_names)}")
+
         # remove zero scales + multiply non-zero ones by dt
         for key in list(self.reward_scales.keys()):
             scale = self.reward_scales[key]
             if scale==0:
-                self.reward_scales.pop(key) 
+                self.reward_scales.pop(key)
             else:
                 self.reward_scales[key] *= self.dt
         # prepare list of functions
@@ -881,14 +890,14 @@ class LeggedRobot(BaseTask):
         """Prepares a list of observation functions, which will be called to compute the observations."""
         self.observation_functions = []
         self.observation_names = []
-        
+
         for name in self.cfg.env.obs:
             # Check if this is a sensor observation (if the name exists in sensors dictionary)
             if name in self.sensors:
                 # Use the generic sensor observation method with the sensor name
                 self.observation_functions.append(lambda sensor_name=name: self._obs_sensor(sensor_name))
                 self.observation_names.append(name)
-            
+
             else:
                 # Use the named observation method
                 func_name = f'_obs_{name}'
@@ -899,7 +908,7 @@ class LeggedRobot(BaseTask):
                         self.observation_functions.append(lambda: torch.zeros(self.num_envs, 415, device=self.device))
                     else:
                         raise ValueError(f"Missing observation method {func_name} for observation {name}")
-            
+
                 self.observation_names.append(name)
 
     def _create_ground_plane(self):
@@ -928,7 +937,7 @@ class LeggedRobot(BaseTask):
         tm_params.static_friction = self.cfg.terrain.static_friction
         tm_params.dynamic_friction = self.cfg.terrain.dynamic_friction
         tm_params.restitution = self.cfg.terrain.restitution
-        
+
         self.gym.add_triangle_mesh(
             self.sim,
             self.terrain.vertices.flatten(order='C'),
@@ -943,7 +952,7 @@ class LeggedRobot(BaseTask):
             print(f"[Terrain]   Vertices shape: {self.terrain.vertices.shape}, dtype: {self.terrain.vertices.dtype}")
             print(f"[Terrain]   Faces shape: {self.terrain.triangles.shape}, dtype: {self.terrain.triangles.dtype}")
             print(f"[Terrain]   Bounds: {self.terrain.vertices.min(axis=0)} to {self.terrain.vertices.max(axis=0)}")
-            
+
             # Use bright purple/magenta color for high contrast against white background
             terrain_color = (0.8, 0.2, 0.8)  # Bright purple/magenta for maximum visibility
             handle = self.viser_viz.add_mesh(
@@ -955,7 +964,7 @@ class LeggedRobot(BaseTask):
             print(f"[Terrain] Terrain mesh added to Viser (visible at /terrain)")
             print(f"[Terrain]   Mesh handle type: {type(handle)}")
             print(f"[Terrain]   Mesh handles dict keys: {list(self.viser_viz._mesh_handles.keys())}")
-            
+
             # Ensure terrain is visible initially
             if 'terrain' in self.viser_viz._mesh_handles:
                 self.viser_viz._mesh_handles['terrain'].visible = True
@@ -967,7 +976,7 @@ class LeggedRobot(BaseTask):
         """ Creates environments:
              1. loads the robot URDF/MJCF asset,
              2. For each environment
-                2.1 creates the environment, 
+                2.1 creates the environment,
                 2.2 calls DOF and Rigid shape properties callbacks,
                 2.3 create actor with these properties and add them to the env
              3. Store indices of different bodies of the robot
@@ -1053,7 +1062,7 @@ class LeggedRobot(BaseTask):
             pos = self.env_origins[i].clone()
             pos[:2] += torch_rand_float(-1., 1., (2,1), device=self.device).squeeze(1)
             start_pose.p = gymapi.Vec3(*pos)
-                
+
             rigid_shape_props = self._process_rigid_shape_props(rigid_shape_props_asset, i)
             # self.gym.set_asset_rigid_shape_properties(robot_asset, rigid_shape_props)
             actor_handle = self.gym.create_actor(env_handle, robot_asset, start_pose, self.cfg.asset.name, i, self.cfg.asset.self_collisions, 0)
@@ -1082,7 +1091,7 @@ class LeggedRobot(BaseTask):
         """ Sets environment origins. On rough terrain the origins are defined by the terrain platforms.
             Otherwise create a grid.
         """
-      
+
         self.custom_origins = False
         self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
         # create a grid of robots
@@ -1099,7 +1108,7 @@ class LeggedRobot(BaseTask):
         self.obs_scales = self.cfg.normalization.obs_scales
         self.reward_scales = class_to_dict(self.cfg.rewards.scales)
         self.command_ranges = class_to_dict(self.cfg.commands.ranges)
-     
+
 
         self.max_episode_length_s = self.cfg.env.episode_length_s
         self.max_episode_length = np.ceil(self.max_episode_length_s / self.dt)
@@ -1111,11 +1120,11 @@ class LeggedRobot(BaseTask):
     def _reward_lin_vel_z(self):
         # Penalize z axis base linear velocity
         return torch.square(self.base_lin_vel[:, 2])
-    
+
     def _reward_ang_vel_xy(self):
         # Penalize xy axes base angular velocity
         return torch.sum(torch.square(self.base_ang_vel[:, :2]), dim=1)
-    
+
     def _reward_orientation(self):
         # Penalize non flat base orientation
         return torch.sum(torch.square(self.projected_gravity[:, :2]), dim=1)
@@ -1124,11 +1133,11 @@ class LeggedRobot(BaseTask):
         # Penalize base height away from target
         base_height = self.root_states[:, 2]
         return torch.square(base_height - self.cfg.rewards.base_height_target)
-    
+
     def _reward_energy(self):
         # Penalize energy
         return torch.sum(torch.square(self.torques * self.dof_vel), dim=1)
-    
+
     def _reward_torques(self):
         # Penalize torques
         return torch.sum(torch.square(self.torques), dim=1)
@@ -1136,28 +1145,28 @@ class LeggedRobot(BaseTask):
     def _reward_dof_vel(self):
         # Penalize dof velocities
         return torch.sum(torch.square(self.dof_vel), dim=1)
-    
+
     def _reward_dof_acc(self):
         # Penalize dof accelerations
         return torch.sum(torch.square((self.last_dof_vel - self.dof_vel) / self.dt), dim=1)
-    
+
     def _reward_action_rate(self):
         # Penalize changes in actions
         return torch.sum(torch.square(self.last_actions - self.actions), dim=1)
-    
+
     def _reward_action_accel(self):
-        # penalise changes in the change in actions ( acceleration 
-        accel = (self.actions - 2*self.last_actions + self.last_last_actions) 
+        # penalise changes in the change in actions ( acceleration
+        accel = (self.actions - 2*self.last_actions + self.last_last_actions)
         return torch.sum(torch.square(accel), dim=1)
 
     def _reward_collision(self):
         # Penalize collisions on selected bodies
         return torch.sum(1.*(torch.norm(self.contact_forces[:, self.penalised_contact_indices, :], dim=-1) > 0.1), dim=1)
-    
+
     def _reward_termination(self):
         # Terminal reward / penalty
         return self.reset_buf * ~self.time_out_buf
-    
+
     def _reward_dof_pos_limits(self):
         # Penalize dof positions too close to the limit
         out_of_limits = -(self.dof_pos - self.dof_pos_limits[:, 0]).clip(max=0.) # lower limit
@@ -1177,9 +1186,9 @@ class LeggedRobot(BaseTask):
         # Tracking of linear velocity commands (xy axes)
         lin_vel_error = torch.sum(torch.square(self.commands[:, :2] - self.base_lin_vel[:, :2]), dim=1)
         return torch.exp(-lin_vel_error/self.cfg.rewards.tracking_sigma)
-    
+
     def _reward_tracking_ang_vel(self):
-        # Tracking of angular velocity commands (yaw) 
+        # Tracking of angular velocity commands (yaw)
         ang_vel_error = torch.square(self.commands[:, 2] - self.base_ang_vel[:, 2])
         return torch.exp(-ang_vel_error/self.cfg.rewards.tracking_sigma)
 
@@ -1187,7 +1196,7 @@ class LeggedRobot(BaseTask):
         # Reward long steps
         # Need to filter the contacts because the contact reporting of PhysX is unreliable on meshes
         contact = self.contact_forces[:, self.feet_indices, 2] > 1.
-        contact_filt = torch.logical_or(contact, self.last_contacts) 
+        contact_filt = torch.logical_or(contact, self.last_contacts)
         self.last_contacts = contact
         first_contact = (self.feet_air_time > 0.) * contact_filt
         self.feet_air_time += self.dt
@@ -1196,12 +1205,12 @@ class LeggedRobot(BaseTask):
         rew_airTime *= torch.norm(self.commands[:, :2], dim=1) > 0.1 #no reward for zero command
         self.feet_air_time *= ~contact_filt
         return rew_airTime
-    
+
     def _reward_stumble(self):
         # Penalize feet hitting vertical surfaces
         return torch.any(torch.norm(self.contact_forces[:, self.feet_indices, :2], dim=2) >\
              5 *torch.abs(self.contact_forces[:, self.feet_indices, 2]), dim=1)
-        
+
     def _reward_stand_still(self):
         # Penalize motion at zero commands
         return torch.sum(torch.abs(self.dof_pos - self.default_dof_pos), dim=1) * (torch.norm(self.commands[:, :2], dim=1) < 0.1)
@@ -1209,13 +1218,13 @@ class LeggedRobot(BaseTask):
     def _reward_feet_contact_forces(self):
         # penalize high contact forces
         return torch.sum((torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1) -  self.cfg.rewards.max_contact_force).clip(min=0.), dim=1)
-    
+
     def _init_sensors(self):
         """Initialize sensors based on the configuration.
-        
+
         This method creates sensors based on the configurations in cfg.sensors.sensor_cfgs.
         To use sensors in your robot:
-        
+
         1. In your robot config class, define sensor configurations:
             ```python
             sensors = LeggedRobotSensorsCfg(
@@ -1227,7 +1236,7 @@ class LeggedRobot(BaseTask):
                 ]
             )
             ```
-            
+
         2. Add the sensor names to the obs list:
             ```python
             env = LeggedRobotEnvCfg(
@@ -1235,7 +1244,7 @@ class LeggedRobot(BaseTask):
                 ...
             )
             ```
-            
+
         3. The observation methods will be automatically handled
         """
 
@@ -1251,20 +1260,20 @@ class LeggedRobot(BaseTask):
         for sensor_index, sensor_cfg in enumerate(self.cfg.sensors.sensor_cfgs):
             if not sensor_cfg.enabled:
                 continue
-                
+
             # If name is not provided, use the type name (and add index if multiple of same type)
             if not sensor_cfg.name:
-                same_type_count = sum(1 for i, s in enumerate(self.cfg.sensors.sensor_cfgs) 
+                same_type_count = sum(1 for i, s in enumerate(self.cfg.sensors.sensor_cfgs)
                                   if i < sensor_index and s.type == sensor_cfg.type and s.enabled)
                 sensor_cfg.name = f"{sensor_cfg.type}_{same_type_count}" if same_type_count > 0 else sensor_cfg.type
-            
+
             # Create the appropriate sensor based on type
             if sensor_cfg.type == 'depth_camera':
                 self._init_depth_camera(sensor_cfg, terrain_vertices, terrain_triangles)
-                
+
             elif sensor_cfg.type == 'heightfield':
                 self._init_heightfield(sensor_cfg, terrain_vertices, terrain_triangles)
-                
+
             elif sensor_cfg.type == 'multi_link_height':
                 self._init_multi_link_height(sensor_cfg, terrain_vertices, terrain_triangles)
 
@@ -1272,7 +1281,7 @@ class LeggedRobot(BaseTask):
         """Initialize a depth camera sensor"""
         from legged_gym.utils.raycaster.sensors import DepthCameraSensor
         from legged_gym.utils.raycaster.sensor_cfg import DepthCameraSensorCfg
-        
+
         # Create depth camera configuration
         camera_device_cfg = DepthCameraSensorCfg(
             device=self.sim_device,
@@ -1284,7 +1293,7 @@ class LeggedRobot(BaseTask):
             only_heading=sensor_cfg.only_heading,
             intrinsic_matrix=sensor_cfg.intrinsic_matrix
         )
-        
+
         # Create the depth camera sensor
         self.sensors[sensor_cfg.name] = DepthCameraSensor(
             self, camera_device_cfg, terrain_vertices, terrain_triangles
@@ -1294,10 +1303,10 @@ class LeggedRobot(BaseTask):
         """Initialize a heightfield sensor"""
         from legged_gym.utils.raycaster.sensors import HeightfieldSensor
         from legged_gym.utils.raycaster.sensor_cfg import HeightfieldSensorCfg
-        
+
         # todo -- why tf do we recreate this twice. Thanks, claude :( )
         # Create heightfield configuration
-        sensor_args = {k: v for k, v in sensor_cfg.to_dict().items() if k in HeightfieldSensorCfg(device=None).__dict__ and k is not 'type'}
+        sensor_args = {k: v for k, v in sensor_cfg.to_dict().items() if k in HeightfieldSensorCfg(device=None).__dict__ and k != 'type'}
         heightfield_device_cfg = HeightfieldSensorCfg(
             device=self.sim_device,
             **sensor_args
@@ -1309,7 +1318,7 @@ class LeggedRobot(BaseTask):
             # use_float=sensor_cfg.use_float,
             # gaussian_noise_scale=sensor_cfg.gaussian_noise_scale
         )
-        
+
         # Create the heightfield sensor
         self.sensors[sensor_cfg.name] = HeightfieldSensor(
             self, heightfield_device_cfg, terrain_vertices, terrain_triangles
@@ -1319,7 +1328,7 @@ class LeggedRobot(BaseTask):
         """Initialize a multi-link height sensor"""
         from legged_gym.utils.raycaster.sensors import MultiLinkHeightSensor
         from legged_gym.utils.raycaster.sensor_cfg import MultiLinkHeightSensorCfg
-        
+
         # Create multi-link height sensor configuration
         multi_link_device_cfg = MultiLinkHeightSensorCfg(
             device=self.sim_device,
@@ -1329,7 +1338,7 @@ class LeggedRobot(BaseTask):
             link_names=sensor_cfg.link_names,
             use_float=sensor_cfg.use_float
         )
-        
+
         # Create the multi-link height sensor
         self.sensors[sensor_cfg.name] = MultiLinkHeightSensor(
             self, multi_link_device_cfg, terrain_vertices, terrain_triangles
@@ -1339,15 +1348,15 @@ class LeggedRobot(BaseTask):
         """Validate that all sensor observations have corresponding enabled sensors"""
         if not hasattr(self.cfg, 'sensors'):
             return
-            
+
         # Get all configured sensor names
         sensor_names = []
         for sensor_cfg in self.cfg.sensors.sensor_cfgs:
             if sensor_cfg.enabled:
                 sensor_names.append(sensor_cfg.name or sensor_cfg.type)
-        
+
         sensor_names = set(sensor_names)
-        
+
         # Check if any observation is a sensor name but not in the enabled sensors
         for obs in self.cfg.env.obs:
             if obs not in sensor_names and obs in {'depth_camera', 'heightfield'} or obs.startswith(('depth_camera_', 'heightfield_')):
@@ -1356,13 +1365,13 @@ class LeggedRobot(BaseTask):
 
     def get_sensor(self, sensor_name):
         """Get a sensor by name.
-        
+
         Args:
             sensor_name (str): Name of the sensor to retrieve
-            
+
         Returns:
             The sensor object if found, None otherwise
-            
+
         Example:
             ```python
             # Get the depth camera sensor
@@ -1373,16 +1382,16 @@ class LeggedRobot(BaseTask):
             ```
         """
         return self.sensors.get(sensor_name, None)
-        
+
     def get_sensor_data(self, sensor_name):
         """Get sensor data for a specific sensor.
-        
+
         Args:
             sensor_name (str): Name of the sensor
-            
+
         Returns:
             The sensor's data (usually a depth_map tensor) if found, None otherwise
-            
+
         Example:
             ```python
             # Get depth map from the depth camera
@@ -1396,11 +1405,11 @@ class LeggedRobot(BaseTask):
         if sensor:
             return sensor.depth_map
         return None
-    
+
     @property
     def env_root_pos(self):
         return self.root_states[:, 0:3]
-    
+
     @property
     def env_rigid_body_pos(self):
         return self.rigid_body_pos
@@ -1419,16 +1428,16 @@ class LeggedRobot(BaseTask):
                 self._save_trajectory_data(env_id)
                 self.env_episode_done[env_id] = True
                 self.num_envs_completed += 1
-                
+
                 # Print progress
                 print(f"Saved trajectory for environment {env_id} ({self.num_envs_completed}/{self.cfg.env.num_envs} completed)")
-                
+
                 # Check if all environments are done
                 if self.num_envs_completed == self.cfg.env.num_envs:
                     print(f"\nAll {self.cfg.env.num_envs} environments have completed their first episode!")
                     print(f"Trajectory data saved in: {self.export_dir}/")
             else:
-                
+
                 # If this is the first step for this environment, initialize names
                 if len(self.trajectory_data[env_id]['joint_names']) == 0:
                     self.trajectory_data[env_id]['joint_names'] = self.dof_names
@@ -1443,7 +1452,7 @@ class LeggedRobot(BaseTask):
                         use_standardized_names = len(foot_names) == 2 and \
                             'left_ankle_roll_link' in foot_names and \
                             'right_ankle_roll_link' in foot_names
-                        
+
                         if use_standardized_names:
                             # Use standardized foot names for G1
                             self.trajectory_data[env_id]['contacts']['left_foot'] = []
@@ -1457,7 +1466,8 @@ class LeggedRobot(BaseTask):
                     # For deepmimic environments, store the trajectory name
                     if hasattr(self, 'replay_data_loader'):
                         clip_index = self.replay_data_loader.episode_indices[env_id].item()
-                        trajectory_path = self.replay_data_loader.pkl_paths[clip_index]
+                        trajectory_paths = self.replay_data_loader.get_pkl_paths()
+                        trajectory_path = trajectory_paths[clip_index]
                         trajectory_name = os.path.splitext(os.path.basename(trajectory_path))[0]
                         self.trajectory_data[env_id]['trajectory_name'] = trajectory_name
 
@@ -1475,7 +1485,7 @@ class LeggedRobot(BaseTask):
                     self.trajectory_data[env_id]['obs'] = {k: [] for k in self.obs_dict.keys()}
                 for key, value in self.obs_dict.items():
                     self.trajectory_data[env_id]['obs'][key].append(value[env_id].cpu().numpy())
-                
+
                 # Get link positions and orientations
                 link_pos = []
                 link_quat = []
@@ -1484,7 +1494,7 @@ class LeggedRobot(BaseTask):
                     quat = self.rigid_body_quat[env_id, i].cpu().numpy()
                     link_pos.append(pos)
                     link_quat.append(quat)
-                
+
                 self.trajectory_data[env_id]['link_pos'].append(link_pos)
                 self.trajectory_data[env_id]['link_quat'].append(link_quat)
 
@@ -1516,7 +1526,7 @@ class LeggedRobot(BaseTask):
         import pickle
         import numpy as np
         import os
-        
+
         # Convert lists to numpy arrays
         export_data = {
             'joint_names': self.trajectory_data[env_id]['joint_names'],
@@ -1545,5 +1555,5 @@ class LeggedRobot(BaseTask):
         filepath = os.path.join(self.export_dir, filename)
         with open(filepath, 'wb') as f:
             pickle.dump(export_data, f)
-        
+
         print(f"Trajectory data saved to {filepath}")

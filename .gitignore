@@ -1,6 +1,19 @@
 simulation/data/checkpoints
 simulation/data/unitree_lafan
 simulation/data/videomimic_captures
+simulation/data/videomimic_captures_mp4/
+simulation/data/videomimic_captures_npz/
+simulation/data/videomimic_raw_videos_jpeg/
+simulation/data/videomimic_raw_videos_mp4/*
+!simulation/data/videomimic_raw_videos_mp4/
+!simulation/data/videomimic_raw_videos_mp4/videomimic_123_public_dataset_manifest.csv
+simulation/data/holosoma_stairs_policy_eval/
+simulation/data/holosoma_stairs_success_eval/
+simulation/data/single_clip_policy_eval/
+simulation/logs/
+simulation/run_logs/
+simulation/videomimic_gym/simulation/
+real2sim/logs/
 
 # Editor
 .vscode/

@@ -2,9 +2,9 @@
 
 ## System Requirements
 
-- **Operating System**: Recommended Ubuntu 18.04 or later  
-- **GPU**: Nvidia GPU  
-- **Driver Version**: Recommended version 525 or later  
+- **Operating System**: Recommended Ubuntu 18.04 or later
+- **GPU**: Nvidia GPU
+- **Driver Version**: Recommended version 525 or later
 
 ---
 
@@ -110,4 +110,3 @@ cd ..
 ## Summary
 
 After completing the above steps, you are ready to run the related programs in the virtual environment. If you encounter any issues, refer to the official documentation of each component or check if the dependencies are installed correctly.
-

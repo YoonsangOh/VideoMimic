@@ -1,0 +1,17 @@
+- folder_path: apr22_IMG_5622
+  teacher_checkpoint_run_name: 20250428_185201_g1_deepmimic
+  human_video_data_pattern: retarget_poses_g1.h5
+  human_video_terrain_pattern: background_mesh.obj
+  default_data_fps_override: 60
+
+- folder_path: apr22_IMG_5618
+  teacher_checkpoint_run_name: 20250428_185201_g1_deepmimic
+  human_video_data_pattern: retarget_poses_g1.h5
+  human_video_terrain_pattern: background_mesh.obj
+  default_data_fps_override: 60
+
+- folder_path: apr22_IMG_8125
+  teacher_checkpoint_run_name: 20250428_185201_g1_deepmimic
+  human_video_data_pattern: retarget_poses_g1.h5
+  human_video_terrain_pattern: background_mesh.obj
+  default_data_fps_override: 60

@@ -34,8 +34,8 @@ PYTHON_BIN="/home/nas5/kyungminlee/anaconda3/envs/videomimic/bin/python"
 export LD_LIBRARY_PATH=/home/nas5/kyungminlee/anaconda3/envs/videomimic/lib:$LD_LIBRARY_PATH
 export PATH=/home/nas5/kyungminlee/anaconda3/envs/videomimic/bin:$PATH
 
-# Set WandB API key
-export WANDB_API_KEY="54d5951df3502e196e3a1b895e227e9969fc8e7b"
+# Require WandB API key from the environment; do not hardcode secrets in git.
+: "${WANDB_API_KEY:?Set WANDB_API_KEY before running this script.}"
 
 # Use g1_deepmimic instead of g1_deepmimic_proj_heightfield for compatibility with pretrained model
 CMD="$PYTHON_BIN videomimic_gym/legged_gym/scripts/play.py \
@@ -60,4 +60,3 @@ echo "Viser will be available at http://localhost:8080"
 echo "Press Ctrl+C to stop"
 
 eval $CMD
-

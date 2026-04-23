@@ -44,8 +44,8 @@ PYTHON_BIN="/home/nas5/kyungminlee/anaconda3/envs/videomimic/bin/python"
 export LD_LIBRARY_PATH=/home/nas5/kyungminlee/anaconda3/envs/videomimic/lib:$LD_LIBRARY_PATH
 export PATH=/home/nas5/kyungminlee/anaconda3/envs/videomimic/bin:$PATH
 
-# Set WandB API key
-export WANDB_API_KEY="54d5951df3502e196e3a1b895e227e9969fc8e7b"
+# Require WandB API key from the environment; do not hardcode secrets in git.
+: "${WANDB_API_KEY:?Set WANDB_API_KEY before running this script.}"
 
 if [ "$NUM_GPUS" -eq 1 ]; then
     # Single GPU
@@ -108,4 +108,3 @@ else
       --env.rewards.scales.ankle_action=-3.0 \
       --env.rewards.scales.action_rate=-3.0
 fi
-

@@ -25,9 +25,10 @@ class BaseTask():
         else:
             self.device = 'cpu'
 
-        # graphics device for rendering, -1 for no rendering
+        # graphics device for rendering, -1 disables all graphics including camera sensors.
         self.graphics_device_id = self.sim_device_id
-        if self.headless == True:
+        self.offscreen_rendering = bool(getattr(cfg.env, "offscreen_rendering", False))
+        if self.headless == True and not self.offscreen_rendering:
             self.graphics_device_id = -1
 
         self.num_envs = cfg.env.num_envs
@@ -48,7 +49,7 @@ class BaseTask():
         self.time_out_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
         if not self.use_dict_obs and self.num_privileged_obs is not None:
             self.privileged_obs_buf = torch.zeros(self.num_envs, self.num_privileged_obs, device=self.device, dtype=torch.float)
-        else: 
+        else:
             self.privileged_obs_buf = None
             # self.num_privileged_obs = self.num_obs
 
@@ -77,7 +78,7 @@ class BaseTask():
             return self.obs_dict
         else:
             return self.obs_buf
-        
+
     def get_obs_shapes(self):
         if len(self.obs_dict) == 0:
             self.compute_observations()
@@ -86,7 +87,7 @@ class BaseTask():
             return {k:tuple(v.shape)[1:] for k, v in self.obs_dict.items()}
         else:
             return self.obs_buf.shape[1:]
-    
+
     def get_privileged_observations(self):
         return self.privileged_obs_buf
 

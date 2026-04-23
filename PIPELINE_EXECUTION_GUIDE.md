@@ -399,29 +399,38 @@ python visualization/retargeting_visualization.py \
 
 ## 서버 간 데이터 전송
 
-### H200 → RTX 3090 (Stage 1, Stage 3 실행 전)
+### H200 데이터 가져오기 (RTX 3090에서 pull)
+
+**중요 제약**:
+- `h200 -> rtx3090` 직접 접속/전송은 불가
+- 따라서 아래 전송은 **RTX 3090 서버에서 실행**해서 H200의 파일을 pull 해야 함
 
 #### Stage 1 실행을 위한 데이터 전송
 
 ```bash
-# H200 서버에서
-scp -r demo_data/input_images/{video_name} user@rtx3090:/path/to/VideoMimic/real2sim/demo_data/input_images/
-scp -r demo_data/input_masks/{video_name} user@rtx3090:/path/to/VideoMimic/real2sim/demo_data/input_masks/
+# RTX 3090 서버에서 실행 (H200 -> RTX 3090 pull)
+scp -r user@h200:/path/to/VideoMimic/real2sim/demo_data/input_images/{video_name} \
+    /path/to/VideoMimic/real2sim/demo_data/input_images/
+scp -r user@h200:/path/to/VideoMimic/real2sim/demo_data/input_masks/{video_name} \
+    /path/to/VideoMimic/real2sim/demo_data/input_masks/
 ```
 
 또는 `rsync` 사용:
 
 ```bash
-rsync -avz demo_data/input_images/{video_name} user@rtx3090:/path/to/VideoMimic/real2sim/demo_data/input_images/
-rsync -avz demo_data/input_masks/{video_name} user@rtx3090:/path/to/VideoMimic/real2sim/demo_data/input_masks/
+# RTX 3090 서버에서 실행 (H200 -> RTX 3090 pull)
+rsync -avz user@h200:/path/to/VideoMimic/real2sim/demo_data/input_images/{video_name} \
+    /path/to/VideoMimic/real2sim/demo_data/input_images/
+rsync -avz user@h200:/path/to/VideoMimic/real2sim/demo_data/input_masks/{video_name} \
+    /path/to/VideoMimic/real2sim/demo_data/input_masks/
 ```
 
 #### Stage 3 실행을 위한 데이터 전송
 
 ```bash
-# H200 서버에서
-scp demo_data/output_smpl_and_points/megahunter_megasam_reconstruction_results_{video_name}_cam01_frame_{start}_{end}_subsample_{subsample}.h5 \
-    user@rtx3090:/path/to/VideoMimic/real2sim/demo_data/output_smpl_and_points/
+# RTX 3090 서버에서 실행 (H200 -> RTX 3090 pull)
+scp user@h200:/path/to/VideoMimic/real2sim/demo_data/output_smpl_and_points/megahunter_megasam_reconstruction_results_{video_name}_cam01_frame_{start}_{end}_subsample_{subsample}.h5 \
+    /path/to/VideoMimic/real2sim/demo_data/output_smpl_and_points/
 ```
 
 ### RTX 3090 → H200 (Stage 2, Stage 4 실행 전)
@@ -503,9 +512,3 @@ Stage 3.2에서 NKSR 관련 에러가 발생하는 경우:
 
 **작성일**: 2025년
 **작성자**: VideoMimic 사용자 가이드
-
-
-
-
-
-

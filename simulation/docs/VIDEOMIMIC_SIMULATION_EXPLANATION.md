@@ -76,7 +76,7 @@ self.replay_data_loader = ReplayDataLoader(
 2. **그리드 배치**:
    ```python
    self.vertices, self.triangles, ... = duplicate_mesh_grid_multi(
-       self.meshes, 
+       self.meshes,
        cfg.n_rows,  # 행 개수
        noise_config=noise_config  # 노이즈 설정 (옵션)
    )
@@ -315,7 +315,7 @@ def update_replay_data(self):
 ### 5.3 학습 과정 요약
 
 1. **초기화**: Pretrained policy 로드
-2. **에피소드 시작**: 
+2. **에피소드 시작**:
    - 영상의 첫 프레임 위치에 로봇 생성
    - 해당 영상의 씬(terrain) 로드
 3. **스텝마다**:
@@ -390,4 +390,3 @@ VideoMimic의 시뮬레이션은 다음과 같이 동작합니다:
 5. **Pretrained policy를 초기값으로 사용하여 finetuning**
 
 이 과정을 통해 로봇은 영상의 모션을 자연스럽게 재현하면서도 물리적으로 타당한 동작을 학습합니다.
-

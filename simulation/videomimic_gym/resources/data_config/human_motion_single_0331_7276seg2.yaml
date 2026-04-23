@@ -1,0 +1,5 @@
+- folder_path: "apr21_IMG_7276-00.02.11.110-00.02.16.628-seg2"
+  teacher_checkpoint_run_name: "20250428_185201_g1_deepmimic"
+  human_video_data_pattern: "retarget_poses_g1.h5"
+  human_video_terrain_pattern: "background_mesh.obj"
+  default_data_fps_override: 60

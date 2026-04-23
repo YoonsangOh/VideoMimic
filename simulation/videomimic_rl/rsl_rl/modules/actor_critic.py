@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2021 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: BSD-3-Clause
-# 
+#
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 #
@@ -42,7 +42,7 @@ class EmbedMLP(nn.Module):
     def __init__(self, input_size, output_size, bias=True):
         super(EmbedMLP, self).__init__()
         self.input_proc = nn.Linear(input_size, output_size, bias=bias)
-    
+
     def forward(self, x):
         return self.input_proc(x)
 
@@ -102,6 +102,7 @@ class ForwardProcDict(nn.Module):
         self.learn_weights = learn_weights
         self.obs_proc_spec = obs_proc_spec
         self.first_hidden_dim = first_hidden_dim
+        self.disabled_keys = set()
 
         obs_proc_heads = {}
         extra_proj_heads = {}
@@ -129,18 +130,25 @@ class ForwardProcDict(nn.Module):
         output_shape = self.forward({k: torch.zeros(1, *obs_shapes[k]) for k in obs_shapes})[0].shape
         assert len(output_shape) == 2 # expect one batch dim and then latent dim
         self.output_shape = output_shape[1]
-    
+
+    def set_disabled_keys(self, disabled_keys):
+        self.disabled_keys = set(disabled_keys)
+
     def forward(self, input_dict: Dict[str, torch.Tensor]):
         outputs = []
         extra_add_outputs = []
         extra_proj_outputs = []
         for k, head in self.heads.items():
             head_output = head(input_dict[k])
+            if k in self.disabled_keys:
+                head_output = torch.zeros_like(head_output)
             outputs.append(head_output)
 
         # extra proj heads, returned separately to be added later to the net
         for k, head in self.extra_proj_heads.items():
             head_output = head(input_dict[k])
+            if k in self.disabled_keys:
+                head_output = torch.zeros_like(head_output)
             extra_proj_outputs.append(head_output)
 
         if self.add_outputs:
@@ -182,6 +190,9 @@ class ActorCritic(nn.Module):
                         init_noise_std=1.0,
                         lstm_dim=0,
                         layer_norm=False,
+                        disable_actor_terrain_input=False,
+                        disable_critic_terrain_input=False,
+                        terrain_input_obs_names=None,
                         **kwargs):
         if kwargs:
             print("ActorCritic.__init__ got unexpected arguments, which will be ignored: " + str([key for key in kwargs.keys()]))
@@ -195,9 +206,26 @@ class ActorCritic(nn.Module):
 
         self.env_obs_shapes = obs_shapes
         self.env_num_actions = num_actions
+        self.terrain_input_obs_names = terrain_input_obs_names or []
 
         self.actor_input_net = ForwardProcDict(obs_shapes, obs_proc_actor, add_outputs=False, embed_dim=256 if lstm_dim == 0 else lstm_dim, first_hidden_dim=actor_hidden_dims[0])
         self.critic_input_net = ForwardProcDict(obs_shapes, obs_proc_critic, add_outputs=False, embed_dim=256 if lstm_dim == 0 else lstm_dim, first_hidden_dim=critic_hidden_dims[0])
+
+        if disable_actor_terrain_input:
+            actor_disabled_keys = [
+                key for key in self.terrain_input_obs_names
+                if key in self.actor_input_net.heads or key in self.actor_input_net.extra_proj_heads
+            ]
+            self.actor_input_net.set_disabled_keys(actor_disabled_keys)
+            print(f"ActorCritic: disabling actor terrain inputs for keys: {actor_disabled_keys}")
+
+        if disable_critic_terrain_input:
+            critic_disabled_keys = [
+                key for key in self.terrain_input_obs_names
+                if key in self.critic_input_net.heads or key in self.critic_input_net.extra_proj_heads
+            ]
+            self.critic_input_net.set_disabled_keys(critic_disabled_keys)
+            print(f"ActorCritic: disabling critic terrain inputs for keys: {critic_disabled_keys}")
 
         mlp_input_dim_a = self.actor_input_net.output_shape + lstm_dim
         mlp_input_dim_c = self.critic_input_net.output_shape + lstm_dim
@@ -238,13 +266,13 @@ class ActorCritic(nn.Module):
         self.distribution = None
         # disable args validation for speedup
         Normal.set_default_validate_args = False
-        
+
         # seems that we get better performance without init
         # self.init_memory_weights(self.memory_a, 0.001, 0.)
         # self.init_memory_weights(self.memory_c, 0.001, 0.)
-    
+
     def re_init_std(self, init_noise_std=1.0):
-        self.std.data[:] = init_noise_std 
+        self.std.data[:] = init_noise_std
 
     @staticmethod
     # not used at the moment
@@ -258,7 +286,7 @@ class ActorCritic(nn.Module):
 
     def forward(self):
         raise NotImplementedError
-    
+
     @property
     def action_mean(self):
         return self.distribution.mean
@@ -266,11 +294,11 @@ class ActorCritic(nn.Module):
     @property
     def action_std(self):
         return self.distribution.stddev
-    
+
     @property
     def entropy(self):
         return self.distribution.entropy().sum(dim=-1)
-    
+
     def update_distribution(self, observations, call_input_net=True):
         if call_input_net:
             obs_after_proc, extra_proj_outputs = self.actor_input_net(observations)
@@ -305,32 +333,32 @@ class ActorCritic(nn.Module):
         # Register activation hooks if monitoring is enabled
         if monitor_activations:
             self.register_activation_hooks()
-            
+
         if call_input_net:
             observations, extra_proj_outputs = self.actor_input_net(observations)
         logits = self.actor(observations, extra_proj_outputs=extra_proj_outputs)
-        
+
         # Print activation statistics if monitoring is enabled
         if monitor_activations:
             self.print_activation_stats()
             self.remove_activation_hooks()
-            
+
         return logits
 
     def evaluate(self, critic_observations, call_input_net=True, monitor_activations=False, **kwargs):
         # Register activation hooks if monitoring is enabled
         if monitor_activations:
             self.register_activation_hooks()
-            
+
         if call_input_net:
             critic_observations, extra_proj_outputs = self.critic_input_net(critic_observations)
         value = self.critic(critic_observations, extra_proj_outputs=extra_proj_outputs)
-        
+
         # Print activation statistics if monitoring is enabled
         if monitor_activations:
             self.print_activation_stats()
             self.remove_activation_hooks()
-            
+
         # if self.normalise_value:
         #     self.value_normalisation.inverse(value)
         return value
@@ -344,35 +372,35 @@ class ActorCritic(nn.Module):
         # Clear any existing hooks
         self.remove_activation_hooks()
         self.activation_values = {}
-        
+
         # Hook function to save activations
         def hook_fn(name):
             def hook(module, input, output):
                 self.activation_values[name] = output.detach()
             return hook
-        
+
         # Register hooks for actor layers
         for i, module in enumerate([m for m in self.actor if isinstance(m, nn.Linear)]):
             hook = module.register_forward_hook(hook_fn(f"actor_layer_{i}"))
             self.activation_hooks.append(hook)
-            
+
         # Register hooks for critic layers
         for i, module in enumerate([m for m in self.critic if isinstance(m, nn.Linear)]):
             hook = module.register_forward_hook(hook_fn(f"critic_layer_{i}"))
             self.activation_hooks.append(hook)
-    
+
     def remove_activation_hooks(self):
         """Remove all registered forward hooks."""
         for hook in self.activation_hooks:
             hook.remove()
         self.activation_hooks = []
-    
+
     def print_activation_stats(self):
         """Print statistics of activations in each layer."""
         if not self.activation_values:
             print("No activation values recorded. Call register_activation_hooks() before forward pass.")
             return
-            
+
         print("\n===== Activation Statistics =====")
         for name, activation in sorted(self.activation_values.items()):
             act_mean = activation.mean().item()

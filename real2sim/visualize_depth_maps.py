@@ -9,8 +9,15 @@ import numpy as np
 import cv2
 import os
 import argparse
+import sys
 from pathlib import Path
 from tqdm import tqdm
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from video_preview_compat import CompatibleVideoWriter
 
 def load_dict_from_hdf5(h5file, path="/"):
     """Recursively load a nested dictionary from an HDF5 file."""
@@ -26,7 +33,7 @@ def load_dict_from_hdf5(h5file, path="/"):
 def visualize_depth_maps(h5_path, output_dir, max_frames=None, save_rgb=False, create_video=False, fps=30):
     """
     Extract and visualize depth maps from reconstruction H5 file.
-    
+
     Args:
         h5_path: Path to H5 file (Stage 1 or Stage 2 output)
         output_dir: Directory to save depth map visualizations
@@ -36,10 +43,10 @@ def visualize_depth_maps(h5_path, output_dir, max_frames=None, save_rgb=False, c
         fps: Frames per second for video
     """
     os.makedirs(output_dir, exist_ok=True)
-    
+
     with h5py.File(h5_path, 'r') as f:
         data = load_dict_from_hdf5(f)
-    
+
     # Determine data structure
     if 'monst3r_ga_output' in data:
         # Stage 1 file
@@ -51,13 +58,13 @@ def visualize_depth_maps(h5_path, output_dir, max_frames=None, save_rgb=False, c
         print("Detected Stage 2 file (MegaHunter optimization)")
     else:
         raise ValueError("Unknown file format. Expected 'monst3r_ga_output' or 'our_pred_world_cameras_and_structure'")
-    
+
     frame_names = sorted([k for k in world_env.keys()])
     if max_frames:
         frame_names = frame_names[:max_frames]
-    
+
     print(f"Processing {len(frame_names)} frames...")
-    
+
     # First pass: compute global depth range for consistent coloring
     print("Computing global depth range...")
     global_depth_min = float('inf')
@@ -70,39 +77,29 @@ def visualize_depth_maps(h5_path, output_dir, max_frames=None, save_rgb=False, c
                 global_depth_max = max(global_depth_max, depths.max())
         except:
             continue
-    
+
     print(f"Global depth range: {global_depth_min:.3f}m - {global_depth_max:.3f}m")
-    
+
     # Get image dimensions from first frame
     first_frame_name = frame_names[0]
     depths_shape = world_env[first_frame_name]['depths'].shape
     rgb_shape = world_env[first_frame_name]['rgbimg'].shape[:2]
-    
+
     # Initialize video writers if needed
     depth_video_writer = None
     comparison_video_writer = None
     if create_video:
         h, w = depths_shape[:2]
         depth_video_path = os.path.join(output_dir, "depth_map_video.mp4")
-        depth_video_writer = cv2.VideoWriter(
-            depth_video_path, 
-            cv2.VideoWriter_fourcc(*'mp4v'), 
-            fps, 
-            (w, h)
-        )
-        
+        depth_video_writer = CompatibleVideoWriter(depth_video_path, fps, (w, h), input_color="bgr")
+
         comparison_video_path = os.path.join(output_dir, "rgb_depth_comparison_video.mp4")
-        comparison_video_writer = cv2.VideoWriter(
-            comparison_video_path,
-            cv2.VideoWriter_fourcc(*'mp4v'),
-            fps,
-            (w * 2, h)
-        )
+        comparison_video_writer = CompatibleVideoWriter(comparison_video_path, fps, (w * 2, h), input_color="bgr")
         print(f"Creating videos: {depth_video_path} and {comparison_video_path}")
-    
+
     all_depths = []
     all_rgb = []
-    
+
     # Second pass: process frames and create visualizations
     for i, frame_name in enumerate(tqdm(frame_names, desc="Processing frames")):
         try:
@@ -112,30 +109,30 @@ def visualize_depth_maps(h5_path, output_dir, max_frames=None, save_rgb=False, c
             else:
                 print(f"Warning: No depth map found for {frame_name}")
                 continue
-            
+
             # Get RGB image for comparison
             rgb_img = world_env[frame_name]['rgbimg']
             if rgb_img.max() <= 1.0:
                 rgb_img = (rgb_img * 255).astype(np.uint8)
             else:
                 rgb_img = rgb_img.astype(np.uint8)
-            
+
             # Normalize using global range for consistent coloring across frames
             depth_norm = (depths - global_depth_min) / (global_depth_max - global_depth_min + 1e-8)
             depth_norm = np.clip(depth_norm, 0, 1)
-            
+
             # Apply color map
             depth_colored = cv2.applyColorMap((depth_norm * 255).astype(np.uint8), cv2.COLORMAP_TURBO)
-            
+
             # Save depth map image
             depth_path = os.path.join(output_dir, f"{frame_name}_depth.png")
             cv2.imwrite(depth_path, depth_colored)
-            
+
             # Save RGB if requested
             if save_rgb:
                 rgb_path = os.path.join(output_dir, f"{frame_name}_rgb.png")
                 cv2.imwrite(rgb_path, cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR))
-            
+
             # Create side-by-side comparison
             if rgb_img.shape[:2] == depths.shape[:2]:
                 h, w = depths.shape[:2]
@@ -144,19 +141,19 @@ def visualize_depth_maps(h5_path, output_dir, max_frames=None, save_rgb=False, c
                 comparison[:, w:] = depth_colored
                 comparison_path = os.path.join(output_dir, f"{frame_name}_comparison.png")
                 cv2.imwrite(comparison_path, comparison)
-                
+
                 # Add to video
                 if create_video:
                     depth_video_writer.write(depth_colored)
                     comparison_video_writer.write(comparison)
-            
+
             all_depths.append(depths)
             all_rgb.append(rgb_img)
-            
+
         except Exception as e:
             print(f"Error processing {frame_name}: {e}")
             continue
-    
+
     # Release video writers
     if create_video:
         if depth_video_writer:
@@ -165,7 +162,7 @@ def visualize_depth_maps(h5_path, output_dir, max_frames=None, save_rgb=False, c
         if comparison_video_writer:
             comparison_video_writer.release()
             print(f"Comparison video saved: {os.path.join(output_dir, 'rgb_depth_comparison_video.mp4')}")
-    
+
     # Print statistics
     if all_depths:
         all_depths_array = np.array(all_depths)
@@ -184,11 +181,10 @@ def main():
     parser.add_argument("--save-rgb", action="store_true", help="Also save RGB images")
     parser.add_argument("--create-video", action="store_true", help="Create video from depth maps")
     parser.add_argument("--fps", type=int, default=30, help="Frames per second for video")
-    
+
     args = parser.parse_args()
-    
+
     visualize_depth_maps(args.h5_path, args.output_dir, args.max_frames, args.save_rgb, args.create_video, args.fps)
 
 if __name__ == "__main__":
     main()
-
